@@ -1,0 +1,19 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment: { POSTGRES_DB: railvision, POSTGRES_USER: railvision, POSTGRES_PASSWORD: railvision }
+    volumes: [pgdata:/var/lib/postgresql/data]
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg2://railvision:railvision@db:5432/railvision
+      SECRET_KEY: ${SECRET_KEY:-please-change-me}
+      CORS_ORIGINS: http://localhost:8080
+    depends_on: [db]
+    restart: on-failure
+    volumes: [backend-data:/app/data, uploads:/app/static/uploads]
+  frontend:
+    build: ./frontend
+    ports: ["8080:80"]
+    depends_on: [backend]
+volumes: { pgdata: {}, backend-data: {}, uploads: {} }
