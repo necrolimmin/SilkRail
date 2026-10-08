@@ -205,6 +205,7 @@ def run():
     # ---------- Workers + KPI ----------
     # real staff is entered in the app (or imported from Excel) and restored from data/station_records.json;
     # synthetic demo staff only with SEED_DEMO_STAFF=1
+    months = [(TODAY.replace(day=1) - timedelta(days=30 * i)).strftime("%Y-%m") for i in range(6)]
     if os.getenv("SEED_DEMO_STAFF") == "1":
         workers_rows = []
         for s in st_list:
@@ -223,7 +224,6 @@ def run():
         db.flush()
         kpi_rows = []
         cashiers = db.query(m.Worker).filter(m.Worker.position.in_(["Yuk xazinachisi", "Tovar kassiri"])).all()
-        months = [(TODAY.replace(day=1) - timedelta(days=30 * i)).strftime("%Y-%m") for i in range(6)]
         for w in cashiers:
             for mo in months:
                 a, b, c = R.randint(60, 220), R.randint(40, 200), R.randint(20, 160)
@@ -483,7 +483,7 @@ def run():
     db.commit()
 
     # re-apply admin map edits (renamed / moved stations, custom markers) — see map_routes.EDITS_FILE
-    import json, os
+    import json
     edits_path = os.path.join(os.getenv("DATA_DIR", "data"), "map_edits.json")
     if os.path.exists(edits_path):
         with open(edits_path, encoding="utf-8") as f:
