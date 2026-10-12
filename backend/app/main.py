@@ -50,6 +50,12 @@ os.makedirs("static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
+@app.on_event("startup")
+def _warm_external_cache():
+    from . import external
+    external.warm_up()
+
+
 @app.get("/api/health")
 def health():
     return {"status": "ok"}

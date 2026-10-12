@@ -412,27 +412,82 @@ def kpi(sid: int, month: str | None = None, db: Session = Depends(get_db)):
          "plan": k.plan, "percent": k.percent, "status": k.status} for k, w in q.order_by(m.KpiRecord.percent.desc()).all()]}
 
 
+class _NoSource(Exception):
+    def __init__(self, reason: str):
+        self.reason = reason
+
+
+def _api_station(s: m.Station):
+    """(api_name, branch, how) of the station in the MTU reporting system, or raises _NoSource / HTTP 502."""
+    from .. import external
+    if not external.enabled():
+        raise _NoSource("not_configured")
+    try:
+        match = external.match_station(s)
+    except external.ExternalError as ex:
+        raise HTTPException(502, f"external_{ex}")
+    if not match:
+        raise _NoSource("not_mapped")
+    return match
+
+
+def _days(report: str, match, a: date, e: date) -> dict:
+    from .. import external
+    try:
+        return external.report_days(report, match[0], match[1], a, e)
+    except external.ExternalError as ex:
+        raise HTTPException(502, f"external_{ex}")
+
+
+def _meta(match, a: date, e: date, days: dict) -> dict:
+    return {"source": "api", "apiStation": match[0], "branch": match[1], "match": match[2],
+            "from": a.isoformat(), "to": e.isoformat(), "reported": len(days)}
+
+
+def _freight_figures(days: dict) -> dict:
+    """Indicator values for a set of daily freight records (None when there is nothing to compute from)."""
+    if not days:
+        return {k: None for k in ("loadWagons", "loadTons", "unloadWagons", "statWeight", "workingPark")}
+    tot = lambda f: sum(v.get(f, 0) for v in days.values())
+    load, tons = tot("load_all"), tot("tannaj_all")
+    # wagons standing under loading + unloading: a stock per shift, averaged per day, then over the days
+    park = [(v.get("und_load_all", 0) + v.get("und_unload_all", 0)) / max(1, v.get("_shifts", 1)) for v in days.values()]
+    return {"loadWagons": load, "loadTons": tons, "unloadWagons": tot("unload_all"),
+            "statWeight": round(tons / load, 1) if load else None, "workingPark": round(sum(park) / len(park), 1)}
+
+
+# category number -> key of _freight_figures (None = not provided by the source yet)
+CAT_API = {1: "loadWagons", 2: "loadTons", 3: "unloadWagons", 4: "statWeight", 5: None, 6: "workingPark", 7: None}
+
+
 @router.get("/{sid}/indicators", dependencies=[Depends(require_station_tab("indicators"))])
 def indicators(sid: int, year: int | None = None, month: int | None = None, db: Session = Depends(get_db)):
-    """Report prev year vs plan & report current year, per category (to selected month)."""
+    """Year-to-date report (1 January .. end of the chosen month) vs the same period of the previous year."""
+    st = _st(db, sid)
     today = date.today()
     year = year or today.year
     month = month or (today.month if year == today.year else 12)
-    out = []
-    for cat in range(1, 8):
-        def agg(y, col):
-            return db.query(func.coalesce(func.sum(col), 0)).filter(
-                m.IndicatorValue.station_id == sid, m.IndicatorValue.category == cat,
-                m.IndicatorValue.year == y, m.IndicatorValue.month <= month).scalar()
-        prev = agg(year - 1, m.IndicatorValue.fact)
-        plan = agg(year, m.IndicatorValue.plan)
-        cur = agg(year, m.IndicatorValue.fact)
-        out.append({"category": cat, "key": CAT_NAMES[cat], "prevReport": round(prev, 1), "plan": round(plan, 1),
-                    "report": round(cur, 1), "diffPlan": round(cur - plan, 1), "diffPrev": round(cur - prev, 1)})
-    return {"year": year, "month": month, "items": out}
+    try:
+        match = _api_station(st)
+    except _NoSource as ns:
+        return {"source": "none", "reason": ns.reason, "year": year, "month": month, "items": []}
+    end = min(date(year + (month == 12), month % 12 + 1, 1) - timedelta(days=1), today)
+    start = date(year, 1, 1)
+    cur = _days("freight-report", match, start, end)
+    prev_start, prev_end = date(year - 1, 1, 1), date(year - 1, end.month, min(end.day, 28 if end.month == 2 else end.day))
+    prev = _days("freight-report", match, prev_start, prev_end) if prev_start >= API_HISTORY_START else {}
+    fc, fp = _freight_figures(cur), _freight_figures(prev)
+    items = []
+    for cat, key in CAT_API.items():
+        rc = fc.get(key) if key else None
+        rp = fp.get(key) if key else None
+        items.append({"category": cat, "key": CAT_NAMES[cat], "available": key is not None,
+                      "prevReport": rp, "plan": None, "report": rc, "diffPlan": None,
+                      "diffPrev": round(rc - rp, 1) if rc is not None and rp is not None else None})
+    return {**_meta(match, start, end, cur), "year": year, "month": month, "prevFrom": prev_start.isoformat(),
+            "prevTo": prev_end.isoformat(), "prevReported": len(prev), "items": items}
 
 
-# series of the Harakat tab, from the MTU reporting API (sum of day + night shifts)
 TRAFFIC_KINDS = {
     "moves": ("arrival", "departure"),          # received / dispatched (unit — trains or wagons — still being confirmed)
     "load": ("load_all", "unload_all"),         # wagons loaded / unloaded
@@ -563,8 +618,47 @@ def finance_aggregate(db: Session, s: date, e: date, station_ids: list[int] | No
 
 @router.get("/{sid}/finance", dependencies=[Depends(require_station_tab("finance"))])
 def finance(sid: int, start: str | None = None, end: str | None = None, db: Session = Depends(get_db)):
-    s, e = parse_range(start, end, "any")
-    return {"start": s.isoformat(), "end": e.isoformat(), **finance_aggregate(db, s, e, [sid])}
+    """Loaded / unloaded wagons (local vs CIS), loaded mass and income (pul_tushumi) from the MTU reporting API."""
+    st = _st(db, sid)
+    a, e = parse_range(start, end, "any")
+    a = max(a, API_HISTORY_START)
+    try:
+        match = _api_station(st)
+    except _NoSource as ns:
+        return {"source": "none", "reason": ns.reason, "start": a.isoformat(), "end": e.isoformat()}
+    days = _days("freight-report", match, a, e)
+    tot = lambda f: sum(v.get(f, 0) for v in days.values())
+    load, load_sng, unload, unload_sng, tons = tot("load_all"), tot("load_sng"), tot("unload_all"), tot("unload_sng"), tot("tannaj_all")
+    daily = [{"day": d, "income": days[d].get("pul_tushumi", 0)} for d in sorted(days)]
+    return {**_meta(match, a, e, days), "start": a.isoformat(), "end": e.isoformat(),
+            "loaded": {"local": max(0, load - load_sng), "sng": load_sng, "total": load},
+            "unloaded": {"local": max(0, unload - unload_sng), "sng": unload_sng, "total": unload},
+            "income": tot("pul_tushumi"), "incomeDays": sum(1 for v in days.values() if v.get("pul_tushumi")),
+            "loadedMass": tons, "statLoad": round(tons / load, 1) if load else None, "incomeDaily": daily}
+
+
+@router.get("/{sid}/wagon-requests", dependencies=[Depends(require_station_tab("traffic"))])
+def wagon_requests(sid: int, start: str | None = None, end: str | None = None, db: Session = Depends(get_db)):
+    """Wagon supply requests vs fulfilled, per wagon type, plus the free-text removal log (uborka report)."""
+    from ..external import WAGON_TYPES
+    st = _st(db, sid)
+    a, e = parse_range(start, end, "any")
+    a = max(a, API_HISTORY_START)
+    try:
+        match = _api_station(st)
+    except _NoSource as ns:
+        return {"source": "none", "reason": ns.reason}
+    days = _days("uborka-report", match, a, e)
+    types = []
+    for w in WAGON_TYPES:
+        req = sum(v.get(f"zayavka_{w}", 0) for v in days.values())
+        done = sum(v.get(f"done_{w}", 0) for v in days.values())
+        types.append({"type": w, "requested": req, "done": done, "pct": round(done / req * 100) if req else None})
+    req_all, done_all = sum(t["requested"] for t in types), sum(t["done"] for t in types)
+    notes = [{"day": d, **n} for d in sorted(days, reverse=True) for n in days[d].get("_notes", [])][:60]
+    return {**_meta(match, a, e, days), "types": types,
+            "totals": {"requested": req_all, "done": done_all, "pct": round(done_all / req_all * 100) if req_all else None},
+            "notes": notes}
 
 
 @router.get("/{sid}/income", dependencies=[Depends(require_station_tab("income"))])

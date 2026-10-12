@@ -62,6 +62,16 @@ export default {
     notConfigured: "Подключение к системе отчётов не настроено", notConfiguredText: "На сервере не задан ключ EXTERNAL_API_KEY в backend/.env.",
     errTitle: "Система отчётов МТУ недоступна", errText: "Не удалось получить данные. Попробуйте позже.",
   },
+  live: {
+    ytd: "С начала года: {{from}} — {{to}}, сравнение с тем же периодом прошлого года", notInSource: "нет в источнике", noPlan: "плана нет в отчётах МТУ",
+    vsPrev: "{{pct}}% от прошлого года", ofWhichSng: "в т.ч. СНГ", tbd: "уточняется", sngHint: "Поле load_sng / unload_sng: смысл (вагоны СНГ или направление) уточняется.",
+    income: "Доход (pul_tushumi)", incomeDays: "заполнено дней: {{n}}", incomeByDay: "Доход по дням",
+    incomeNote: "Суммы как в отчётах станций: часть станций вводит их в другом масштабе (тыс./млн), это уточняется.",
+    missingFin: "штрафов и провозной платы в отчётах МТУ нет",
+    requests: "Заявки на подачу вагонов", requested: "Заявлено", done: "Выполнено", fulfilment: "Выполнение", wagonType: "Род вагона",
+    notes: "Журнал уборки ({{n}})", day: "день", night: "ночь",
+    wagons: { kr: "Крытые", pl: "Платформы", pv: "Полувагоны", chs: "Цистерны", zer: "Зерновозы", sem: "Цементовозы", fit: "Фитинговые платформы", pr: "Прочие" },
+  },
   records: {
     roads: { count: "путей: {{n}} (действуют: {{active}})", length: "общая длина действующих: {{n}} м", clear: "Удалить все", clearConfirm: "Удалить все подъездные пути станции ({{n}})?", deleteConfirm: "Удалить путь «{{owner}}»?", emptyTitle: "Подъездные пути ещё не внесены", emptyAdmin: "Нажмите «Шаблон Excel», отдайте файл владельцам путей, после заполнения загрузите его кнопкой «Загрузить Excel»." }, download: "Шаблон Excel", upload: "Загрузить Excel", imported: "Загружено записей: {{n}}", errTitle: "В файле есть ошибки", errHint: "Данные не изменены. Исправьте ячейки в файле и загрузите его снова.", row: "Строка", col: "Столбец", problem: "Что не так", value: "Значение", staff: { more: "Ещё", deleteAllN: "Удалить всех ({{n}})", selected: "Выбрано: {{n}}", deleteSelected: "Удалить выбранных сотрудников ({{n}})?", deleteAll: "Удалить всех", deleteAllTitle: "Удалить весь персонал станции?", deleteAllText: "Будут удалены все {{n}} сотрудников и их KPI. Это нельзя отменить.", deleteAllOk: "Удалить {{n}}", deletedAll: "Удалено сотрудников: {{n}}", add: "Добавить сотрудника", edit: "Изменить сотрудника", deleteConfirm: "Удалить сотрудника?", gender: "Пол", editRates: "Изменить штатные единицы", emptyTitle: "Сотрудники ещё не внесены", emptyAdmin: "Добавьте сотрудников вручную или скачайте «Шаблон Excel», заполните его и загрузите обратно.", emptyViewer: "Данные пока не заполнены администратором." }, tracks: { clear: "Очистить парк", clearConfirm: "Удалить все пути парка «{{park}}» ({{n}})?", deleteConfirm: "Удалить путь № {{no}}?", emptyPark: "В «{{park}}» пути ещё не внесены", count: "путей: {{n}}", capacity: "вместимость {{n}} ваг.", emptyTitle: "Пути и парки ещё не внесены", emptyAdmin: "Нажмите «Шаблон Excel», отдайте файл ответственным, после заполнения загрузите его кнопкой «Загрузить Excel» — пути разложатся по паркам." },
     fields: { owner: "Владелец пути", inn: "ИНН", leader: "Руководитель", email: "Эл. почта", distance_km: "Расстояние подачи", length_t1: "T1", length_t2: "T2", contract_date: "Дата договора", contract_start: "Начало договора", contract_end: "Окончание договора", has_tech_passport: "Тех. паспорт", has_instruction: "Инструкция", junction: "Примыкание", load_hours: "Погрузка", unload_hours: "Выгрузка", oper2_hours: "Сдвоенная", front: "Фронт", wagons_at_once: "Вагонов за подачу", created_year: "Год создания", canceled: "Расторгнут", park: "Парк", track_no: "Путь №", purpose: "Назначение", arrow_from: "Стрелка от", arrow_to: "Стрелка до", length_total: "Общая длина", usable_length: "Полезная длина", wagon_capacity: "Вместимость", insulation: "Изоляция", contact_network: "Контактная сеть", alns: "АЛСН", full_name: "Ф.И.О.", position: "Должность", gender: "Пол", birth_date: "Дата рождения", education: "Образование", contract_type: "Тип договора", hired_date: "Дата приёма", phone: "Телефон" },
@@ -75,7 +85,7 @@ export default {
     panoHint: "Загрузите панораму 2:1 (JPG, PNG, WebP до 80 МБ) или готовый тур из Pano2VR / krpano: заархивируйте папку тура в ZIP (до 600 МБ).", prev: "Предыдущее фото", next: "Следующее фото",
   },
   map: {
-    zoomIn: "Приблизить", zoomOut: "Отдалить", zoomLevel: "Масштаб карты", fitAll: "Показать всю сеть",
+    toolsShow: "Показать инструменты карты", toolsHide: "Свернуть инструменты карты", zoomIn: "Приблизить", zoomOut: "Отдалить", zoomLevel: "Масштаб карты", fitAll: "Показать всю сеть",
     dockShow: "Показать панель", dockHide: "Скрыть панель",
     edit: {
       panelHint: "Станции, метки и их положение", addStationHint: "Клик по карте — привяжется к пути", addMarkerHint: "Любая точка, значок и цвет на выбор",
@@ -117,7 +127,7 @@ export default {
     },
   },
   station: {
-    edit: { button: "Редактировать", title: "Сведения о станции", phone: "Телефон" },
+    groups: { about: "Станция", infra: "Инфраструктура", team: "Команда", ops: "Работа станции", wip: "В разработке" }, edit: { button: "Редактировать", title: "Сведения о станции", phone: "Телефон" },
     tabs: {
       home: "Главная", staff: "Сотрудники", tech: "Тех. описание", cadastre: "Кадастр", kpi: "KPI", indicators: "Показатели",
       traffic: "Движение", emm: "ЭММ", kmo: "Контр. осмотр", income: "Доходы и расходы", finance: "Фин. показатели",

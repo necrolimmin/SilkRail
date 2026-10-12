@@ -213,18 +213,18 @@ export function StaffTab({ st }) {
               <Button size="small" type="text" icon={<X size={14} />} onClick={() => setSelected([])}>{t("common.cancel")}</Button>
             </div>
           )}
-          <Table rowKey="id" loading={loading} dataSource={data?.items} size="middle" scroll={{ x: 1000 }} rowClassName="rv-row-actions"
+          <Table rowKey="id" loading={loading} dataSource={data?.items} size="middle" scroll={{ x: 1280 }} rowClassName="rv-row-actions"
             rowSelection={admin ? { selectedRowKeys: selected, onChange: setSelected, preserveSelectedRowKeys: true, columnWidth: 40 } : undefined}
             pagination={{ current: page, total: data?.total, pageSize: 10, onChange: setPage, showSizeChanger: false, hideOnSinglePage: true }}
             columns={[
               { title: "#", width: 50, render: (_, __, i) => (page - 1) * 10 + i + 1 },
-              { title: t("station.f.fullName"), render: (r) => <span style={{ display: "flex", gap: 10, alignItems: "center" }}><PersonAvatar gender={r.gender} size={36} title={r.gender === "F" ? t("station.staff.female") : t("station.staff.male")} /><b>{r.fullName}</b></span> },
-              { title: t("station.staff.position"), dataIndex: "position" },
-              { title: t("station.staff.eduTitle"), dataIndex: "education", render: (v) => <Tag color={EDU_COLORS[EDU.indexOf(v)]}>{t(`station.staff.${v}`)}</Tag> },
-              { title: t("station.staff.birth"), dataIndex: "birthDate", render: date },
-              { title: t("station.staff.hired"), dataIndex: "hiredDate", render: date },
-              { title: t("station.staff.contract"), dataIndex: "contractType", render: (v) => <Tag>{v}</Tag> },
-              { title: t("station.f.phone"), dataIndex: "phone", render: (v) => v || "—" },
+              { title: t("station.f.fullName"), width: 300, render: (r) => <span className="rv-person"><PersonAvatar gender={r.gender} size={36} title={r.gender === "F" ? t("station.staff.female") : t("station.staff.male")} /><b>{r.fullName}</b></span> },
+              { title: t("station.staff.position"), dataIndex: "position", width: 230, render: (v) => <span className="rv-wrap">{v}</span> },
+              { title: t("station.staff.eduTitle"), dataIndex: "education", width: 160, render: (v) => <Tag color={EDU_COLORS[EDU.indexOf(v)]}>{t(`station.staff.${v}`)}</Tag> },
+              { title: t("station.staff.birth"), dataIndex: "birthDate", width: 120, render: date },
+              { title: t("station.staff.hired"), dataIndex: "hiredDate", width: 120, render: date },
+              { title: t("station.staff.contract"), dataIndex: "contractType", width: 150, render: (v) => <Tag>{v}</Tag> },
+              { title: t("station.f.phone"), dataIndex: "phone", width: 160, render: (v) => v || "—" },
               ...(admin ? [{
                 title: "", key: "act", width: 72, fixed: "right", render: (r) => (
                   <div className="rv-row-btns">

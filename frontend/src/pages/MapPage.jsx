@@ -24,6 +24,17 @@ const DEFAULT_LAYERS = { trains: false, fuel: false, markers: true, borders: tru
 const KIND_DATA = { station: "stations", company: "companies", camera: "cameras", crossing: "crossings", warning: "warnings", marker: "markers" };
 const esc = (x) => String(x ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
+/* Turntable tools: inner ring (r1) = zoom, outer ring (r2) = the rest. Angles in degrees, 180 = left, 270 = up. */
+const TOOLS = (t, { selectedMtu, showMtuStats, searchOpen }) => [
+  // outer ring first, so the inner buttons are painted above the outer tracks
+  { key: "search", Icon: Search, label: t("common.search"), ring: 2, angle: 270, active: searchOpen },
+  { key: "full", Icon: Maximize, label: t("common.fullscreen"), ring: 2, angle: 240 },
+  { key: "fit", Icon: Crosshair, label: t("map.fitAll"), ring: 2, angle: 210 },
+  { key: "stats", Icon: BarChart3, label: t("map.mtuStats.show"), ring: 2, angle: 180, active: !!(selectedMtu && showMtuStats) },
+  { key: "zoomIn", Icon: Plus, label: t("map.zoomIn"), ring: 1, angle: 255 },
+  { key: "zoomOut", Icon: Minus, label: t("map.zoomOut"), ring: 1, angle: 195 },
+];
+
 function MapEvents({ onChange, onClick }) {
   const idle = useRef(null);
   // html.rv-moving pauses decorative animations and backdrop blur while the map is dragged or zoomed
@@ -69,6 +80,8 @@ export default function MapPage() {
   // sliding indicator under the open dock section (same idea as the header)
   const dockRef = useRef(null);
   const [dockOpen, setDockOpen] = useState(false); // hidden at the bottom until the arrow is pressed
+  const [toolsOpen, setToolsOpen] = useState(store.get("rv_tools_open", true)); // turntable fan of map tools
+  useEffect(() => { store.set("rv_tools_open", toolsOpen); }, [toolsOpen]);
   const toggleDock = () => { setDockOpen((o) => !o); setPanel(null); };
   const [dockInd, setDockInd] = useState(null);
   useEffect(() => {
@@ -289,20 +302,27 @@ export default function MapPage() {
         </div>
       )}
 
-      {/* right controls */}
-      {/* right controls: a railway signal mast in the palette colours; zoom level shown on a small board */}
-      <div className="rv-map-controls">
-        <div className="rv-ctrl-group">
-          <button onClick={() => map?.zoomIn()} aria-label={t("map.zoomIn")} title={t("map.zoomIn")}><Plus size={18} /></button>
-          <div className="rv-zoom-board" title={t("map.zoomLevel")}>{String(view.zoom).padStart(2, "0")}</div>
-          <button onClick={() => map?.zoomOut()} aria-label={t("map.zoomOut")} title={t("map.zoomOut")}><Minus size={18} /></button>
-        </div>
-        <div className="rv-ctrl-group">
-          <button className={selectedMtu && showMtuStats ? "active" : ""} onClick={() => { setShowMtuStats((s) => !s); if (!mtuId) { setDockOpen(true); setPanel("settings"); } }} title={t("map.mtuStats.show")} aria-label={t("map.mtuStats.show")}><BarChart3 size={18} /></button>
-          <button onClick={() => map?.flyToBounds(UZ_BOUNDS, { duration: 0.8 })} title={t("map.fitAll")} aria-label={t("map.fitAll")}><Crosshair size={18} /></button>
-          <button onClick={() => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen())} title={t("common.fullscreen")} aria-label={t("common.fullscreen")}><Maximize size={18} /></button>
-          <button className={searchOpen ? "active" : ""} onClick={() => setSearchOpen((s) => !s)} title={t("common.search")} aria-label={t("common.search")}><Search size={18} /></button>
-        </div>
+      {/* map tools as a depot turntable: a hub in the corner, tools fan out along tracks (click the hub to fold) */}
+      <div className={`rv-turntable ${toolsOpen ? "open" : ""}`}>
+        {TOOLS(t, { map, view, selectedMtu, showMtuStats, searchOpen }).map((tool, i) => (
+          <span key={tool.key} className="spoke" style={{ "--a": `${tool.angle}deg`, "--r": `${tool.ring === 1 ? "var(--r1)" : "var(--r2)"}`, "--i": i }}>
+            <button type="button" className={tool.active ? "active" : ""} title={tool.label} aria-label={tool.label} tabIndex={toolsOpen ? 0 : -1}
+              onClick={() => ({
+                zoomIn: () => map?.zoomIn(), zoomOut: () => map?.zoomOut(),
+                stats: () => { setShowMtuStats((x) => !x); if (!mtuId) { setDockOpen(true); setPanel("settings"); } },
+                fit: () => map?.flyToBounds(UZ_BOUNDS, { duration: 0.8 }),
+                full: () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()),
+                search: () => setSearchOpen((x) => !x),
+              })[tool.key]()}>
+              <tool.Icon size={18} />
+            </button>
+          </span>
+        ))}
+        <button type="button" className="hub" onClick={() => setToolsOpen((o) => !o)} aria-expanded={toolsOpen}
+          title={toolsOpen ? t("map.toolsHide") : t("map.toolsShow")} aria-label={toolsOpen ? t("map.toolsHide") : t("map.toolsShow")}>
+          <i className="ring" />
+          <b>{String(view.zoom).padStart(2, "0")}</b>
+        </button>
       </div>
 
       {/* basemap switcher */}

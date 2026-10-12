@@ -62,6 +62,16 @@ export default {
     notConfigured: "Hisobot tizimiga ulanish sozlanmagan", notConfiguredText: "Serverda backend/.env faylida EXTERNAL_API_KEY ko'rsatilmagan.",
     errTitle: "MTU hisobot tizimi mavjud emas", errText: "Ma'lumotlarni olib bo'lmadi. Keyinroq urinib ko'ring.",
   },
+  live: {
+    ytd: "Yil boshidan: {{from}} — {{to}}, o'tgan yilning shu davri bilan solishtirilgan", notInSource: "manbada yo'q", noPlan: "MTU hisobotlarida reja yo'q",
+    vsPrev: "o'tgan yilning {{pct}}%", ofWhichSng: "shundan MDH", tbd: "aniqlanmoqda", sngHint: "load_sng / unload_sng maydoni: ma'nosi (MDH vagonlari yoki yo'nalish) aniqlanmoqda.",
+    income: "Daromad (pul_tushumi)", incomeDays: "to'ldirilgan kunlar: {{n}}", incomeByDay: "Kunlar bo'yicha daromad",
+    incomeNote: "Summalar stansiyalar kiritganidek: ba'zi stansiyalar boshqa o'lchovda (ming/mln) kiritadi, bu aniqlanmoqda.",
+    missingFin: "jarimalar va yo'l kira haqi MTU hisobotlarida yo'q",
+    requests: "Vagon berish bo'yicha talabnomalar", requested: "So'ralgan", done: "Bajarilgan", fulfilment: "Bajarilishi", wagonType: "Vagon turi",
+    notes: "Uborka jurnali ({{n}})", day: "kunduz", night: "tun",
+    wagons: { kr: "Yopiq vagonlar", pl: "Platformalar", pv: "Yarim vagonlar", chs: "Sisternalar", zer: "Don tashuvchilar", sem: "Sement tashuvchilar", fit: "Fiting platformalar", pr: "Boshqalar" },
+  },
   records: {
     roads: { count: "yo'llar: {{n}} (amalda: {{active}})", length: "amaldagilar uzunligi: {{n}} m", clear: "Barchasini o'chirish", clearConfirm: "Stansiyaning barcha shahobcha yo'llari ({{n}}) o'chirilsinmi?", deleteConfirm: "«{{owner}}» yo'li o'chirilsinmi?", emptyTitle: "Shahobcha yo'llar hali kiritilmagan", emptyAdmin: "«Excel shablon»ni yuklab oling, yo'l egalariga bering, to'ldirilgach «Excel yuklash» orqali qaytaring." }, download: "Excel shablon", upload: "Excel yuklash", imported: "Yuklangan yozuvlar: {{n}}", errTitle: "Faylda xatolar bor", errHint: "Ma'lumotlar o'zgartirilmadi. Fayldagi kataklarni tuzating va qayta yuklang.", row: "Qator", col: "Ustun", problem: "Muammo", value: "Qiymat", staff: { more: "Yana", deleteAllN: "Barchasini o'chirish ({{n}})", selected: "Tanlandi: {{n}}", deleteSelected: "Tanlangan xodimlar ({{n}}) o'chirilsinmi?", deleteAll: "Barchasini o'chirish", deleteAllTitle: "Stansiyaning butun xodimlari o'chirilsinmi?", deleteAllText: "Barcha {{n}} xodim va ularning KPI ma'lumotlari o'chiriladi. Buni qaytarib bo'lmaydi.", deleteAllOk: "{{n}} tasini o'chirish", deletedAll: "O'chirilgan xodimlar: {{n}}", add: "Xodim qo'shish", edit: "Xodimni tahrirlash", deleteConfirm: "Xodim o'chirilsinmi?", gender: "Jinsi", editRates: "Shtat birliklarini o'zgartirish", emptyTitle: "Xodimlar hali kiritilmagan", emptyAdmin: "Xodimlarni qo'lda qo'shing yoki «Excel shablon»ni yuklab oling, to'ldiring va qayta yuklang.", emptyViewer: "Ma'lumotlarni administrator hali kiritmagan." }, tracks: { clear: "Parkni tozalash", clearConfirm: "«{{park}}» parkidagi barcha yo'llar ({{n}}) o'chirilsinmi?", deleteConfirm: "{{no}}-yo'l o'chirilsinmi?", emptyPark: "«{{park}}»ga yo'llar hali kiritilmagan", count: "yo'llar: {{n}}", capacity: "sig'im {{n}} vagon", emptyTitle: "Parklar va yo'llar hali kiritilmagan", emptyAdmin: "«Excel shablon»ni yuklab oling, mas'ullarga bering, to'ldirilgach «Excel yuklash» orqali qaytaring — yo'llar parklarga joylashadi." },
     fields: { owner: "Shahobcha egasi", inn: "STIR", leader: "Rahbar", email: "Elektron pochta", distance_km: "Qo'yib olish masofasi", length_t1: "T1", length_t2: "T2", contract_date: "Shartnoma sanasi", contract_start: "Shartnoma boshlanishi", contract_end: "Shartnoma tugashi", has_tech_passport: "Texnik pasport", has_instruction: "Yo'riqnoma", junction: "Tutashuv", load_hours: "Yuklash", unload_hours: "Tushirish", oper2_hours: "Qo'sh operatsiya", front: "Front", wagons_at_once: "Bir berishda vagon", created_year: "Tashkil etilgan yil", canceled: "Bekor qilingan", park: "Park", track_no: "Yo'l №", purpose: "Vazifasi", arrow_from: "Strelka (dan)", arrow_to: "Strelka (gacha)", length_total: "Umumiy uzunlik", usable_length: "Foydali uzunlik", wagon_capacity: "Vagon sig'imi", insulation: "Izolyatsiya", contact_network: "Kontakt tarmog'i", alns: "ALNS", full_name: "F.I.Sh.", position: "Lavozim", gender: "Jinsi", birth_date: "Tug'ilgan sana", education: "Ma'lumoti", contract_type: "Shartnoma turi", hired_date: "Ishga qabul qilingan", phone: "Telefon" },
@@ -75,7 +85,7 @@ export default {
     panoHint: "2:1 panorama (JPG, PNG, WebP, 80 MB gacha) yoki Pano2VR / krpano turini yuklang: tur papkasini ZIP qiling (600 MB gacha).", prev: "Oldingi rasm", next: "Keyingi rasm",
   },
   map: {
-    zoomIn: "Yaqinlashtirish", zoomOut: "Uzoqlashtirish", zoomLevel: "Xarita masshtabi", fitAll: "Butun tarmoqni ko'rsatish",
+    toolsShow: "Xarita asboblarini ko'rsatish", toolsHide: "Xarita asboblarini yig'ish", zoomIn: "Yaqinlashtirish", zoomOut: "Uzoqlashtirish", zoomLevel: "Xarita masshtabi", fitAll: "Butun tarmoqni ko'rsatish",
     dockShow: "Panelni ko'rsatish", dockHide: "Panelni yashirish",
     edit: {
       panelHint: "Stansiyalar, belgilar va ularning joylashuvi", addStationHint: "Xaritani bosing — yo'lga biriktiriladi", addMarkerHint: "Istalgan nuqta, belgi va rangni tanlang",
@@ -117,7 +127,7 @@ export default {
     },
   },
   station: {
-    edit: { button: "Tahrirlash", title: "Stansiya ma'lumotlari", phone: "Telefon" },
+    groups: { about: "Stansiya", infra: "Infratuzilma", team: "Jamoa", ops: "Stansiya ishi", wip: "Ishlab chiqilmoqda" }, edit: { button: "Tahrirlash", title: "Stansiya ma'lumotlari", phone: "Telefon" },
     tabs: {
       home: "Bosh sahifa", staff: "Xodimlar", tech: "Texnik tavsif", cadastre: "Kadastr", kpi: "KPI", indicators: "Ko'rsatkichlar",
       traffic: "Harakat", emm: "EMM", kmo: "Nazorat ko'rigi", income: "Daromad va xarajat", finance: "Moliyaviy ko'rsatkichlar",

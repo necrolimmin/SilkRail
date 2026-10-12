@@ -98,20 +98,6 @@ export function FinanceView({ data, t }) {
   );
 }
 
-export function FinanceTab({ st }) {
-  const { t } = useTranslation();
-  const [params, picker, r] = useRange();
-  const { data, loading } = useFetch(`/api/stations/${st.id}/finance`, params);
-  return (
-    <div className="rv-grid">
-      <div className="rv-toolbar" style={{ margin: 0 }}>
-        <h3 style={{ margin: 0 }}>{r[0].format("DD.MM.YYYY")} — {r[1].format("DD.MM.YYYY")}</h3>{picker}
-      </div>
-      <Loader loading={loading}>{data && <FinanceView data={data} t={t} />}</Loader>
-    </div>
-  );
-}
-
 export function ComputersTab({ st }) {
   const { t } = useTranslation();
   const { data, loading } = useFetch(`/api/stations/${st.id}/computers`);

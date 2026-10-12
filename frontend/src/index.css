@@ -347,40 +347,39 @@ body { background: var(--rv-bg); color: var(--rv-text); -webkit-font-smoothing: 
 .rv-layer-row .ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--rv-primary-soft); color: var(--rv-primary); flex-shrink: 0; }
 .rv-layer-row .t { font-weight: 700; font-size: 13.5px; }
 .rv-layer-row .d { font-size: 11.5px; color: var(--rv-muted); }
-/* right controls: signal mast (same palette as the bars) */
-.rv-map-controls { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); z-index: 900; display: flex; flex-direction: column; align-items: center; gap: 14px; }
-.rv-map-controls::before {
-  content: ""; position: absolute; left: 50%; top: -18px; bottom: -18px; width: 3px; margin-left: -1.5px; border-radius: 2px; z-index: -1;
-  background: linear-gradient(transparent, color-mix(in srgb, var(--hd-glow) 40%, transparent) 12% 88%, transparent);
-}
-.rv-ctrl-group {
-  display: flex; flex-direction: column; gap: 2px; padding: 4px; border-radius: 16px; color: var(--hd-text);
-  background: radial-gradient(140% 70% at 50% 0%, color-mix(in srgb, var(--hd-ind1) 26%, transparent), transparent 60%), linear-gradient(160deg, var(--hd-bg), var(--hd-bg2));
-  border: 1px solid var(--hd-line); box-shadow: 0 14px 30px -14px rgba(3,20,28,.75), inset 0 1px 0 color-mix(in srgb, var(--hd-text) 6%, transparent);
-  transition: background .5s, border-color .5s;
-}
-.rv-ctrl-group button {
-  position: relative; width: 38px; height: 38px; border: 0; border-radius: 12px; background: transparent; color: var(--hd-muted);
-  cursor: pointer; display: grid; place-items: center; transition: color .2s, background .2s, box-shadow .2s;
-}
-.rv-ctrl-group button:hover { color: var(--hd-text); background: color-mix(in srgb, var(--hd-text) 8%, transparent); }
-/* active = lit signal lamp */
-.rv-ctrl-group button.active {
-  color: var(--hd-lamp); background: color-mix(in srgb, var(--hd-lamp) 16%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--hd-lamp) 45%, transparent), 0 0 14px -4px var(--hd-lamp);
-}
-.rv-ctrl-group button:focus-visible { outline: 2px solid var(--hd-glow); outline-offset: 1px; }
-.rv-zoom-board {
-  height: 24px; margin: 0 3px; border-radius: 7px; display: grid; place-items: center; background: var(--hd-board); border: 1px solid var(--hd-line);
-  color: var(--hd-digits); font: 700 12px/1 "JetBrains Mono", ui-monospace, Consolas, monospace; font-variant-numeric: tabular-nums; letter-spacing: .06em;
-}
-.rv-basemap { position: absolute; left: 16px; bottom: 18px; z-index: 900; }
-.rv-basemap-btn { width: 68px; height: 68px; border-radius: 14px; border: 3px solid var(--rv-surface); box-shadow: var(--rv-shadow); cursor: pointer; overflow: hidden; position: relative; padding: 0; }
-.rv-basemap-btn span { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,.55); color: #fff; font-size: 11px; font-weight: 700; padding: 3px; }
-.rv-basemap-panel { position: absolute; bottom: 80px; left: 0; background: var(--rv-surface); border-radius: 16px; padding: 12px; border: 1px solid var(--rv-border); box-shadow: var(--rv-shadow); display: flex; gap: 10px; }
-.rv-basemap-opt { cursor: pointer; text-align: center; font-size: 11.5px; font-weight: 600; }
-.rv-basemap-opt .thumb { width: 72px; height: 56px; border-radius: 10px; border: 2px solid transparent; margin-bottom: 4px; background-size: cover; }
-.rv-basemap-opt.active .thumb { border-color: var(--rv-primary); }
+/* map tools: depot turntable in the bottom-right corner (palette colours) */
+.rv-turntable { --hub: 60px; --btn: 40px; --r1: 70px; --r2: 124px; position: absolute; right: 18px; bottom: 34px; z-index: 900; width: var(--hub); height: var(--hub); }
+/* each tool sits at the end of a spoke (its "track") rotated to the tool's angle */
+.rv-turntable .spoke { position: absolute; left: 50%; top: 50%; width: var(--r); height: 0; transform-origin: 0 0; transform: rotate(var(--a)) scaleX(0);
+  opacity: 0; pointer-events: none; transition: transform .45s cubic-bezier(.22,.9,.24,1), opacity .25s; transition-delay: calc(var(--i) * 25ms); }
+.rv-turntable.open .spoke { transform: rotate(var(--a)) scaleX(1); opacity: 1; pointer-events: auto; }
+/* the track: two rails with sleepers from the hub to the tool */
+.rv-turntable .spoke::before { content: ""; position: absolute; left: calc(var(--hub) / 2 - 2px); right: calc(var(--btn) / 2 - 2px); top: -3px; height: 6px;
+  background:
+    linear-gradient(color-mix(in srgb, var(--hd-glow) 45%, transparent), color-mix(in srgb, var(--hd-glow) 45%, transparent)) top / 100% 1px no-repeat,
+    linear-gradient(color-mix(in srgb, var(--hd-glow) 45%, transparent), color-mix(in srgb, var(--hd-glow) 45%, transparent)) bottom / 100% 1px no-repeat,
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--hd-glow) 40%, transparent) 0 2px, transparent 2px 7px); }
+.rv-turntable .spoke button { position: absolute; left: 100%; top: 0; width: var(--btn); height: var(--btn); margin: calc(var(--btn) / -2) 0 0 calc(var(--btn) / -2);
+  /* undo the spoke rotation so the icon stays upright */
+  transform: rotate(calc(var(--a) * -1)); border-radius: 50%; cursor: pointer; display: grid; place-items: center; color: var(--hd-text);
+  background: linear-gradient(160deg, var(--hd-bg2), var(--hd-bg)); border: 1px solid var(--hd-line);
+  box-shadow: 0 8px 18px -8px rgba(3,20,28,.7), inset 0 1px 0 color-mix(in srgb, var(--hd-text) 8%, transparent); transition: color .2s, background .2s, box-shadow .2s, border-color .2s; }
+.rv-turntable .spoke button:hover { color: var(--hd-bg); background: var(--hd-glow); border-color: var(--hd-glow); }
+.rv-turntable .spoke button.active { color: var(--hd-lamp); border-color: color-mix(in srgb, var(--hd-lamp) 60%, transparent);
+  box-shadow: 0 0 16px -3px var(--hd-lamp), inset 0 0 0 1px color-mix(in srgb, var(--hd-lamp) 45%, transparent); }
+.rv-turntable .hub { position: absolute; inset: 0; border-radius: 50%; border: 1px solid var(--hd-line); cursor: pointer; display: grid; place-items: center;
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--hd-ind1) 35%, var(--hd-bg2)), var(--hd-bg) 72%);
+  box-shadow: 0 14px 30px -12px rgba(3,20,28,.8), inset 0 1px 0 color-mix(in srgb, var(--hd-text) 8%, transparent); }
+/* tick marks around the hub turn a quarter when the fan opens */
+.rv-turntable .hub .ring { position: absolute; inset: 4px; border-radius: 50%; transition: transform .6s cubic-bezier(.22,.9,.24,1);
+  background: repeating-conic-gradient(color-mix(in srgb, var(--hd-glow) 55%, transparent) 0 3deg, transparent 3deg 15deg);
+  -webkit-mask: radial-gradient(circle, transparent calc(50% - 5px), #000 calc(50% - 4px)); mask: radial-gradient(circle, transparent calc(50% - 5px), #000 calc(50% - 4px)); }
+.rv-turntable.open .hub .ring { transform: rotate(90deg); }
+.rv-turntable .hub b { position: relative; font: 700 15px/1 "JetBrains Mono", ui-monospace, Consolas, monospace; color: var(--hd-digits, var(--hd-lamp)); letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+.rv-turntable .hub:hover { border-color: var(--hd-glow); }
+.rv-turntable button:focus-visible { outline: 2px solid var(--hd-glow); outline-offset: 2px; }
+@media (max-width: 760px) { .rv-turntable { --hub: 52px; --btn: 36px; --r1: 60px; --r2: 106px; right: 12px; bottom: 74px; } }
+@media (prefers-reduced-motion: reduce) { .rv-turntable .spoke, .rv-turntable .hub .ring { transition: none; } }
 .rv-search { position: absolute; top: 86px; right: 16px; z-index: 900; width: 320px; }
 .rv-mtu-card { position: absolute; top: 86px; left: 16px; z-index: 900; width: 300px; }
 
@@ -670,3 +669,43 @@ body { background: var(--rv-bg); color: var(--rv-text); -webkit-font-smoothing: 
 .rv-traffic-kpis span { font-size: 12px; color: var(--rv-muted); }
 .rv-traffic-kpis b { font-size: 22px; font-variant-numeric: tabular-nums; }
 .rv-source { margin-top: 10px; font-size: 11.5px; color: var(--rv-muted); }
+/* live (MTU API) tabs */
+.rv-row-na td { color: var(--rv-muted); }
+.rv-ind-card { display: grid; gap: 4px; }
+.rv-ind-card .lbl { font-size: 12.5px; color: var(--rv-muted); font-weight: 600; }
+.rv-ind-card .val { font-size: 26px; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.rv-split { background: var(--rv-surface-2); border-radius: 12px; padding: 4px 12px; }
+.rv-split > div { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px dashed var(--rv-border); font-size: 13.5px; }
+.rv-split > div:last-child { border-bottom: 0; }
+.rv-split span { display: inline-flex; align-items: center; gap: 8px; }
+.rv-split i { width: 9px; height: 9px; border-radius: 50%; }
+.rv-notes { margin-top: 12px; border: 1px solid var(--rv-border); border-radius: 12px; padding: 8px 12px; }
+.rv-notes summary { cursor: pointer; font-weight: 700; font-size: 13px; }
+.rv-notes ul { list-style: none; margin: 8px 0 0; padding: 0; max-height: 320px; overflow: auto; display: grid; gap: 6px; }
+.rv-notes li { display: grid; grid-template-columns: 150px minmax(0, 1fr) auto; gap: 10px; font-size: 12.5px; padding: 6px 0; border-top: 1px dashed var(--rv-border); }
+.rv-notes .when { color: var(--rv-muted); white-space: nowrap; }
+.rv-notes .txt { white-space: pre-wrap; overflow-wrap: anywhere; }
+.rv-notes .by { color: var(--rv-muted); font-size: 11.5px; }
+@media (max-width: 760px) { .rv-notes li { grid-template-columns: 1fr; gap: 2px; } }
+/* table cells with long names: wrap inside the cell instead of spilling into the next column */
+.rv-person { display: flex; gap: 10px; align-items: center; min-width: 0; }
+.rv-person b { min-width: 0; overflow-wrap: anywhere; line-height: 1.3; }
+.rv-wrap { overflow-wrap: anywhere; }
+/* station card tabs grouped into coloured "carriages" (--g = group colour) */
+.rv-st-tabs { gap: 8px; align-items: center; }
+.rv-st-group { display: flex; gap: 2px; padding: 3px; border-radius: 14px; flex-shrink: 0; position: relative;
+  background: color-mix(in srgb, var(--g) 9%, var(--rv-surface)); border: 1px solid color-mix(in srgb, var(--g) 22%, transparent); }
+/* coupling between carriages */
+.rv-st-group + .rv-st-group::before { content: ""; position: absolute; left: -8px; top: 50%; width: 7px; height: 2px; margin-top: -1px; background: var(--rv-border); }
+.rv-st-t { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 9px; border: 0; border-radius: 11px; background: transparent; cursor: pointer;
+  color: var(--g); font: inherit; font-weight: 700; font-size: 13px; white-space: nowrap; transition: background .15s, color .15s, box-shadow .15s; }
+.rv-st-t:hover { background: color-mix(in srgb, var(--g) 16%, transparent); }
+.rv-st-t.active { background: var(--g); color: #fff; box-shadow: 0 6px 14px -7px var(--g); padding: 0 12px; }
+.rv-st-t .lbl { display: none; }
+.rv-st-t.active .lbl { display: inline; }
+.rv-st-t:focus-visible { outline: 2px solid var(--g); outline-offset: 1px; }
+/* sections in development: one dashed carriage with a single amber lamp */
+.rv-st-group.wip { border-style: dashed; background: transparent; }
+.rv-st-group.wip::after { content: ""; position: absolute; top: -4px; right: -4px; width: 9px; height: 9px; border-radius: 50%; background: #f59e0b; border: 2px solid var(--rv-surface); }
+[data-theme="dark"] .rv-st-t { color: color-mix(in srgb, var(--g) 70%, #fff); }
+[data-theme="dark"] .rv-st-t.active { color: #fff; }

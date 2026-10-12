@@ -5,47 +5,8 @@ import { useTranslation } from "react-i18next";
 import { LockOpen, Lock, RotateCcw, MessageSquare, Filter, ChevronUp, ChevronDown } from "lucide-react";
 import { Chart, Loader, NoData, StatCard, useFetch } from "../../components/ui";
 import { fmt, date, dateTime } from "../../utils";
+import { WagonRequests } from "./tabsLive";
 
-const diffCell = (v) => <b style={{ color: v >= 0 ? "#16a34a" : "#ef4444" }}>{v >= 0 ? "+" : ""}{fmt(v, 1)}</b>;
-
-export function IndicatorsTab({ st }) {
-  const { t } = useTranslation();
-  const [ym, setYm] = useState(dayjs());
-  const { data, loading } = useFetch(`/api/stations/${st.id}/indicators`, { year: ym.year(), month: ym.month() + 1 });
-  const y = ym.year();
-  return (
-    <div className="rv-grid">
-      <div className="rv-card">
-        <div className="rv-toolbar">
-          <h3 style={{ margin: 0 }}>{t("station.tabs.indicators")}</h3>
-          <DatePicker picker="month" value={ym} onChange={(v) => v && setYm(v)} allowClear={false} disabledDate={(d) => d.isAfter(dayjs())} />
-        </div>
-        <Table rowKey="category" loading={loading} dataSource={data?.items} pagination={false} scroll={{ x: 900 }}
-          columns={[
-            { title: t("indicators.type"), render: (r) => <b>{t(`indicators.c${r.category}`)}</b> },
-            { title: t("indicators.prev", { year: y - 1 }), dataIndex: "prevReport", render: (v) => fmt(v, 1) },
-            { title: t("indicators.plan", { year: y }), dataIndex: "plan", render: (v) => fmt(v, 1) },
-            { title: t("indicators.report", { year: y }), dataIndex: "report", render: (v) => <b>{fmt(v, 1)}</b> },
-            { title: t("indicators.diffPlan"), dataIndex: "diffPlan", render: diffCell },
-            { title: t("indicators.diffPrev"), dataIndex: "diffPrev", render: diffCell },
-          ]} />
-      </div>
-      {data && (
-        <div className="rv-card">
-          <Chart height={320} option={{
-            tooltip: { trigger: "axis" }, xAxis: { type: "category", data: data.items.map((r) => t(`indicators.c${r.category}`)), axisLabel: { interval: 0, width: 90, overflow: "break", fontSize: 11 } },
-            yAxis: { type: "log", logBase: 10 },
-            series: [
-              { name: t("indicators.prev", { year: y - 1 }), type: "bar", data: data.items.map((r) => Math.max(1, r.prevReport)), itemStyle: { borderRadius: 4 } },
-              { name: t("indicators.plan", { year: y }), type: "bar", data: data.items.map((r) => Math.max(1, r.plan)), itemStyle: { borderRadius: 4 } },
-              { name: t("indicators.report", { year: y }), type: "bar", data: data.items.map((r) => Math.max(1, r.report)), itemStyle: { borderRadius: 4 } },
-            ],
-          }} />
-        </div>
-      )}
-    </div>
-  );
-}
 
 /* Harakat: live data from the MTU reporting API (via our backend). Day + night shifts are summed;
    "waiting" is a stock value, so it is averaged instead. */
@@ -115,6 +76,7 @@ export function TrafficTab({ st }) {
           )}
         </Loader>
       </div>
+      <WagonRequests st={st} />
     </div>
   );
 }

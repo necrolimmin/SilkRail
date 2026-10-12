@@ -62,6 +62,16 @@ export default {
     notConfigured: "Reporting system connection is not configured", notConfiguredText: "EXTERNAL_API_KEY is not set in backend/.env on the server.",
     errTitle: "MTU reporting system is unavailable", errText: "Could not load the data. Try again later.",
   },
+  live: {
+    ytd: "Year to date: {{from}} — {{to}}, compared with the same period last year", notInSource: "not in source", noPlan: "no plan in MTU reports",
+    vsPrev: "{{pct}}% of last year", ofWhichSng: "of which CIS", tbd: "being confirmed", sngHint: "Field load_sng / unload_sng: meaning (CIS wagons or direction) is being confirmed.",
+    income: "Income (pul_tushumi)", incomeDays: "days filled: {{n}}", incomeByDay: "Income by day",
+    incomeNote: "Amounts as entered by stations: some stations use another scale (thousands/millions), being clarified.",
+    missingFin: "fines and carriage fees are not in MTU reports",
+    requests: "Wagon supply requests", requested: "Requested", done: "Fulfilled", fulfilment: "Fulfilment", wagonType: "Wagon type",
+    notes: "Removal log ({{n}})", day: "day", night: "night",
+    wagons: { kr: "Covered", pl: "Flat", pv: "Gondola", chs: "Tank", zer: "Grain hopper", sem: "Cement hopper", fit: "Container flat", pr: "Other" },
+  },
   records: {
     roads: { count: "{{n}} roads ({{active}} active)", length: "active total length: {{n}} m", clear: "Delete all", clearConfirm: "Delete all {{n}} access roads of the station?", deleteConfirm: "Delete road “{{owner}}”?", emptyTitle: "No access roads entered yet", emptyAdmin: "Download the Excel template, hand it to the road owners, then upload the filled file with “Upload Excel”." }, download: "Excel template", upload: "Upload Excel", imported: "Records imported: {{n}}", errTitle: "The file has errors", errHint: "Nothing was changed. Fix the cells in the file and upload it again.", row: "Row", col: "Column", problem: "Problem", value: "Value", staff: { more: "More", deleteAllN: "Delete all ({{n}})", selected: "Selected: {{n}}", deleteSelected: "Delete the selected employees ({{n}})?", deleteAll: "Delete all", deleteAllTitle: "Delete the whole staff of the station?", deleteAllText: "All {{n}} employees and their KPI will be deleted. This cannot be undone.", deleteAllOk: "Delete {{n}}", deletedAll: "Employees deleted: {{n}}", add: "Add employee", edit: "Edit employee", deleteConfirm: "Delete this employee?", gender: "Gender", editRates: "Edit staff positions", emptyTitle: "No staff entered yet", emptyAdmin: "Add employees by hand, or download the Excel template, fill it in and upload it back.", emptyViewer: "The administrator has not filled this in yet." }, tracks: { clear: "Clear park", clearConfirm: "Delete all {{n}} tracks of “{{park}}”?", deleteConfirm: "Delete track № {{no}}?", emptyPark: "No tracks entered in “{{park}}” yet", count: "{{n}} tracks", capacity: "capacity {{n}} wagons", emptyTitle: "No parks and tracks entered yet", emptyAdmin: "Download the Excel template, hand it to the people in charge, then upload the filled file: tracks are sorted into parks." },
     fields: { owner: "Road owner", inn: "TIN", leader: "Manager", email: "E-mail", distance_km: "Delivery distance", length_t1: "T1", length_t2: "T2", contract_date: "Contract date", contract_start: "Contract start", contract_end: "Contract end", has_tech_passport: "Tech passport", has_instruction: "Instruction", junction: "Junction", load_hours: "Loading", unload_hours: "Unloading", oper2_hours: "Double operation", front: "Front", wagons_at_once: "Wagons per delivery", created_year: "Year created", canceled: "Terminated", park: "Park", track_no: "Track №", purpose: "Purpose", arrow_from: "Switch from", arrow_to: "Switch to", length_total: "Total length", usable_length: "Usable length", wagon_capacity: "Capacity", insulation: "Insulation", contact_network: "Contact network", alns: "ALSN", full_name: "Full name", position: "Position", gender: "Gender", birth_date: "Birth date", education: "Education", contract_type: "Contract type", hired_date: "Hired on", phone: "Phone" },
@@ -75,7 +85,7 @@ export default {
     panoHint: "Upload a 2:1 panorama (JPG, PNG, WebP up to 80 MB) or a ready tour from Pano2VR / krpano: zip the tour folder (up to 600 MB).", prev: "Previous photo", next: "Next photo",
   },
   map: {
-    zoomIn: "Zoom in", zoomOut: "Zoom out", zoomLevel: "Map zoom level", fitAll: "Show the whole network",
+    toolsShow: "Show map tools", toolsHide: "Fold map tools", zoomIn: "Zoom in", zoomOut: "Zoom out", zoomLevel: "Map zoom level", fitAll: "Show the whole network",
     dockShow: "Show panel", dockHide: "Hide panel",
     edit: {
       panelHint: "Stations, markers and their positions", addStationHint: "Click the map — snaps to the track", addMarkerHint: "Any point, pick icon and colour",
@@ -117,7 +127,7 @@ export default {
     },
   },
   station: {
-    edit: { button: "Edit", title: "Station details", phone: "Phone" },
+    groups: { about: "Station", infra: "Infrastructure", team: "Team", ops: "Operations", wip: "In development" }, edit: { button: "Edit", title: "Station details", phone: "Phone" },
     tabs: {
       home: "Overview", staff: "Staff", tech: "Technical", cadastre: "Cadastre", kpi: "KPI", indicators: "Indicators",
       traffic: "Traffic", emm: "EDR", kmo: "Inspection", income: "Income & expense", finance: "Financials",
