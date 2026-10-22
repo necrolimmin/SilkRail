@@ -5,3 +5,6 @@ __pycache__/
 backend/data/
 .env
 backend/static/uploads/
+
+# backups made by python -m app.sync_mtu --apply
+*.before-mtu-*

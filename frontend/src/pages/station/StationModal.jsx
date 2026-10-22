@@ -32,8 +32,10 @@ export default function StationModal({ id, onClose }) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const admin = isAdmin(user);
-  // admins see everything; others see the tabs granted to them (user.stationTabs), minus sections in development
-  const tabs = TABS.filter(([k]) => admin || (!WIP.has(k) && (!user?.stationTabs || user.stationTabs.includes(k))));
+  // admins see everything; others see what the server allows (user.stationTabs already accounts for the sections
+  // switched off for everyone and for this user's explicit exceptions)
+  const tabs = TABS.filter(([k]) => admin || !user?.stationTabs || user.stationTabs.includes(k));
+  const off = new Set(user?.hiddenStationTabs || []); // switched off for regular users
   const first = tabs[0]?.[0];
   const [tab, setTab] = useState(first);
   const [st, setSt] = useState(null);
@@ -57,10 +59,10 @@ export default function StationModal({ id, onClose }) {
             const mine = list.filter(([k]) => tabs.some((x) => x[0] === k));
             if (!mine.length) return null;
             return (
-              <div key={g} className={`rv-st-group ${g}`} style={{ "--g": color }} title={t(`station.groups.${g}`)}>
+              <div key={g} className={`rv-st-group ${mine.every(([k]) => off.has(k)) ? "wip" : ""}`} style={{ "--g": color }} title={t(`station.groups.${g}`)}>
                 {mine.map(([k, Icon]) => (
-                  <button key={k} role="tab" aria-selected={tab === k} className={`rv-st-t ${tab === k ? "active" : ""}`} onClick={() => setTab(k)}
-                    title={WIP.has(k) ? `${t(`station.tabs.${k}`)} · ${t("wip.badge")}` : t(`station.tabs.${k}`)}>
+                  <button key={k} role="tab" aria-selected={tab === k} className={`rv-st-t ${tab === k ? "active" : ""} ${off.has(k) ? "off" : ""}`} onClick={() => setTab(k)}
+                    title={off.has(k) ? `${t(`station.tabs.${k}`)} · ${t("sections.adminsOnly")}` : t(`station.tabs.${k}`)}>
                     <Icon size={17} /><span className="lbl">{t(`station.tabs.${k}`)}</span>
                   </button>
                 ))}
@@ -71,7 +73,7 @@ export default function StationModal({ id, onClose }) {
         <button className="rv-st-tab" onClick={onClose} aria-label="close"><X size={16} /></button>
       </div>
       <div className="rv-st-body">
-        {!Active ? <div className="rv-card" style={{ textAlign: "center", padding: 40 }}><span className="rv-muted">{t("users.noStationTabs")}</span></div> : st ? (WIP.has(tab) ? <UnderConstruction section={tab} /> : <Active st={st} onChange={setSt} />) : <div style={{ height: 300, display: "grid", placeItems: "center" }}><Spin /></div>}
+        {!Active ? <div className="rv-card" style={{ textAlign: "center", padding: 40 }}><span className="rv-muted">{t("users.noStationTabs")}</span></div> : st ? (WIP.has(tab) && off.has(tab) ? <UnderConstruction section={tab} /> : <Active st={st} onChange={setSt} />) : <div style={{ height: 300, display: "grid", placeItems: "center" }}><Spin /></div>}
       </div>
     </Modal>
   );

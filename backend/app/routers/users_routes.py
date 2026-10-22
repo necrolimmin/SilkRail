@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from ..auth import ADMIN_ROLES, PAGES, STATION_TABS, current_user, hash_password, require_roles, user_pages, user_station_tabs
+from ..auth import (ADMIN_ROLES, PAGES, STATION_TABS, current_user, hash_password, hidden_station_tabs, require_roles,
+                    set_hidden_station_tabs, user_base_tabs, user_pages)
 from ..db import get_db
 from ..models import LoginHistory, MapMarker, Message, StationMedia, TrackWork, User
 from .auth_routes import PW_RE
@@ -14,7 +15,8 @@ ROLES = ["superadmin", "admin", "moderator", "viewer"]
 def admin_user_out(u: User) -> dict:
     return {"id": u.id, "username": u.username, "fullName": u.full_name, "role": u.role,
             "pages": user_pages(u), "restricted": u.role not in ADMIN_ROLES and u.allowed_pages is not None,
-            "stationTabs": user_station_tabs(u), "tabsRestricted": u.role not in ADMIN_ROLES and u.allowed_station_tabs is not None,
+            "stationTabs": user_base_tabs(u), "tabsRestricted": u.role not in ADMIN_ROLES and u.allowed_station_tabs is not None,
+            "grantedTabs": [t for t in STATION_TABS if t in (u.granted_station_tabs or [])],
             "createdAt": u.created_at.isoformat() if u.created_at else None}
 
 
@@ -40,6 +42,7 @@ class UserIn(BaseModel):
     role: str = "viewer"
     pages: list[str] | None = None  # None = all pages
     stationTabs: list[str] | None = None  # None = all station card tabs
+    grantedTabs: list[str] | None = None  # switched-off tabs this user may still open
 
 
 class UserPatch(BaseModel):
@@ -50,6 +53,7 @@ class UserPatch(BaseModel):
     allPages: bool = False  # true -> drop the restriction
     stationTabs: list[str] | None = None
     allStationTabs: bool = False
+    grantedTabs: list[str] | None = None
 
 
 @router.get("")
@@ -74,7 +78,7 @@ def create_user(body: UserIn, me: User = Depends(current_user), db: Session = De
     _check_role(body.role, me)
     u = User(username=username, full_name=body.fullName.strip(), role=body.role,
              password_hash=hash_password(body.password), allowed_pages=_clean_pages(body.pages),
-             allowed_station_tabs=_clean_tabs(body.stationTabs))
+             allowed_station_tabs=_clean_tabs(body.stationTabs), granted_station_tabs=_clean_tabs(body.grantedTabs) or None)
     db.add(u)
     db.commit()
     return admin_user_out(u)
@@ -106,6 +110,8 @@ def update_user(uid: int, body: UserPatch, me: User = Depends(current_user), db:
         u.allowed_station_tabs = None
     elif body.stationTabs is not None:
         u.allowed_station_tabs = _clean_tabs(body.stationTabs)
+    if body.grantedTabs is not None:
+        u.granted_station_tabs = _clean_tabs(body.grantedTabs) or None
     db.commit()
     return admin_user_out(u)
 
@@ -126,3 +132,21 @@ def delete_user(uid: int, me: User = Depends(current_user), db: Session = Depend
     db.delete(u)
     db.commit()
     return {"ok": True}
+
+
+# ---------- app-wide switch: station card tabs hidden from all regular users ----------
+settings_router = APIRouter(prefix="/api/admin/station-tabs", tags=["settings"], dependencies=[Depends(require_roles(*ADMIN_ROLES))])
+
+
+class HiddenTabsIn(BaseModel):
+    hidden: list[str]
+
+
+@settings_router.get("")
+def get_station_tabs():
+    return {"tabs": STATION_TABS, "hidden": hidden_station_tabs()}
+
+
+@settings_router.put("")
+def put_station_tabs(body: HiddenTabsIn, db: Session = Depends(get_db)):
+    return {"tabs": STATION_TABS, "hidden": set_hidden_station_tabs(db, body.hidden)}

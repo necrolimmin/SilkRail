@@ -68,7 +68,7 @@ export function TrafficTab({ st }) {
                 }} />
               ) : <NoData />}
               <div className="rv-source">
-                {t("traffic2.source")} · {t("traffic2.apiStation")}: <b>{data.apiStation}</b>
+                {t("traffic2.source")} · {t("traffic2.apiStation")}: <b>{data.apiStation}</b>{data.code && <span> · {t("traffic2.code")} {data.code}</span>}
                 {data.match !== "exact" && data.match !== "manual" && <span> ({t("traffic2.autoMatched")})</span>}
                 {" · "}{t("traffic2.reported", { n: data.reported })}
               </div>

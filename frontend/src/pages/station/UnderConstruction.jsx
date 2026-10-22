@@ -1,9 +1,11 @@
 import { useTranslation } from "react-i18next";
 import { EyeOff } from "lucide-react";
+import { useAuth, isAdmin } from "../../store/auth";
 
 /** Shown to admins in station sections that are still being built (hidden from regular users). */
 export default function UnderConstruction({ section }) {
   const { t } = useTranslation();
+  const { user } = useAuth();
   return (
     <div className="rv-card rv-wip">
       <svg className="scene" viewBox="0 0 320 120" role="img" aria-label={t("wip.title")}>
@@ -25,7 +27,7 @@ export default function UnderConstruction({ section }) {
       <div className="eyebrow">{t(`station.tabs.${section}`)}</div>
       <h3>{t("wip.title")}</h3>
       <p>{t("wip.text")}</p>
-      <span className="note"><EyeOff size={14} />{t("wip.hidden")}</span>
+      {isAdmin(user) && <span className="note"><EyeOff size={14} />{t("wip.hidden")}</span>}
     </div>
   );
 }

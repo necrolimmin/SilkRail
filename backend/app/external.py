@@ -53,8 +53,14 @@ def enabled() -> bool:
 
 
 def _request(report: str, branch: str, start: str, end: str) -> list[dict]:
-    q = urllib.parse.urlencode({"branch_name": branch, "from_date": start, "to_date": end})
-    req = urllib.request.Request(f"{API_URL}/{report}/?{q}", headers={
+    return _get(f"{report}/", {"branch_name": branch, "from_date": start, "to_date": end})
+
+
+def _get(path: str, params: dict) -> list[dict]:
+    """GET <API>/<path>?params -> list of rows; [] for 404 (unknown branch / station code)."""
+    q = urllib.parse.urlencode(params)
+    report, start = path, str(params.get("from_date", ""))
+    req = urllib.request.Request(f"{API_URL}/{path}?{q}", headers={
         "X-API-Key": API_KEY, "Accept": "application/json", "User-Agent": "SilkRail/1.0"})
     for attempt in (1, 2):  # one retry for network hiccups / timeouts
         try:
@@ -138,7 +144,16 @@ def _load_month(key: tuple) -> dict:
             with _LOCK:
                 _CACHE[key] = (time.time() + 6 * 3600, disk)
             return disk
-    rows = _request(report, branch, a.isoformat(), min(b, today).isoformat())
+    agg = _reduce(report, _request(report, branch, a.isoformat(), min(b, today).isoformat()))
+    with _LOCK:
+        _CACHE[key] = (time.time() + (600 if current else 6 * 3600), agg)
+    if not current:
+        _disk_put(key, agg)
+    return agg
+
+
+def _reduce(report: str, rows: list[dict]) -> dict:
+    """Raw report rows -> {api_station: {date: {field: sum over shifts, "_shifts": n, "_notes": [...]}}}."""
     fields = REPORT_FIELDS[report]
     agg: dict[str, dict[str, dict]] = {}
     for r in rows:
@@ -151,10 +166,6 @@ def _load_month(key: tuple) -> dict:
         note = (r.get("uborka") or "").strip()
         if report == "uborka-report" and note and note not in ("0", "-", "—"):  # free-text log of wagon removal
             day.setdefault("_notes", []).append({"shift": r.get("time"), "text": note[:500], "by": (r.get("full_name") or "")[:80]})
-    with _LOCK:
-        _CACHE[key] = (time.time() + (600 if current else 6 * 3600), agg)
-    if not current:
-        _disk_put(key, agg)
     return agg
 
 
@@ -222,6 +233,14 @@ def _loose(x: str) -> str:
     return x.replace("x", "h").replace("q", "k").replace("yo", "e").replace("o", "a")
 
 
+def same_name(a: str, b: str) -> bool:
+    """Station names equal up to Uzbek spelling variants (Oʻzbekiston = Uzbekiston, Xovos = Havas, Salor = Salar)."""
+    if _norm(a) == _norm(b) or _loose(a) == _loose(b):
+        return True
+    u = lambda x: _loose(_norm(x).replace("o'", "u"))
+    return u(a) == u(b)
+
+
 def _overrides() -> dict:
     if os.path.exists(OVERRIDES_FILE):
         with open(OVERRIDES_FILE, encoding="utf-8") as f:
@@ -238,6 +257,8 @@ def api_stations(branch: str) -> list[str]:
 def match_station(s: m.Station) -> tuple[str, str, str] | None:
     """(api_name, branch, how) for one of our stations, or None. how = manual | exact | partial."""
     manual = _overrides().get(s.esr_code)
+    if isinstance(manual, str) and manual.isdigit():
+        manual = None  # a station code, handled by station_code()
     for branch in BRANCHES:
         names = api_stations(branch)
         if manual:
@@ -255,3 +276,132 @@ def match_station(s: m.Station) -> tuple[str, str, str] | None:
             if pre and s.esr_code.startswith(pre[0]):
                 return n, branch, "partial"
     return None
+
+
+# ---------- per-station endpoints (<report>/station/?station_code=...) ----------
+# The reporting system keeps station codes typed in by hand: usually our 6-digit ESR code without the zero before
+# the last digit (722203 -> 72223), sometimes the full 6 digits. There is no endpoint that lists the codes, so we
+# try the likely spellings once and remember the answer.
+CODES_FILE = os.path.join(CACHE_DIR, "station_codes.json")
+CODE_TTL, CODE_MISS_TTL = 7 * 24 * 3600, 24 * 3600
+_codes: dict | None = None
+_STATION_CACHE: dict[tuple, tuple[float, dict]] = {}
+
+
+def _codes_load() -> dict:
+    global _codes
+    if _codes is None:
+        try:
+            with open(CODES_FILE, encoding="utf-8") as f:
+                _codes = json.load(f)
+        except (OSError, ValueError):
+            _codes = {}
+    return _codes
+
+
+def _codes_save():
+    try:
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        with open(CODES_FILE, "w", encoding="utf-8") as f:
+            json.dump(_codes, f, ensure_ascii=False, indent=1)
+    except OSError as e:
+        log.warning("station codes cache write failed: %s", e)
+
+
+def _probe_code(code: str) -> tuple[bool, str | None]:
+    """(exists, station name in the reporting system) for a station code."""
+    end = date.today()
+    start = date.fromordinal(end.toordinal() - 10)
+    q = urllib.parse.urlencode({"station_code": code, "from_date": start.isoformat(), "to_date": end.isoformat()})
+    req = urllib.request.Request(f"{API_URL}/freight-report/station/?{q}", headers={
+        "X-API-Key": API_KEY, "Accept": "application/json", "User-Agent": "SilkRail/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            rows = json.load(r)
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):  # our key is wrong: a real failure, not "no such code"
+            raise ExternalError(f"http_{e.code}")
+        return False, None        # 404 unknown code; their server also answers 400/500 to codes it cannot parse
+    except Exception as e:
+        raise ExternalError(type(e).__name__)
+    return True, (rows[0].get("user") if rows else None)
+
+
+def code_candidates(esr: str) -> list[tuple[str, bool]]:
+    """[(code, name_must_match)] to try for our ESR code, most likely first."""
+    esr = (esr or "").strip()
+    out = []
+    if len(esr) == 6 and esr.isdigit():
+        short = esr[:4] + esr[5]
+        if esr[4] == "0":
+            out.append((short, False))   # the usual hand-typed form: zero before the last digit dropped
+            out.append((esr, False))     # or typed in full
+        else:
+            out.append((esr, False))
+            out.append((short, True))    # ambiguous: accept only when the station name agrees
+    elif esr.isdigit() and 4 <= len(esr) <= 6:
+        out.append((esr, False))
+    return out
+
+
+def station_code(s: m.Station) -> tuple[str, str | None, str] | None:
+    """(code, name in the reporting system, how) for our station, or None. how = manual | exact | partial."""
+    manual = _overrides().get(s.esr_code)
+    if isinstance(manual, str) and manual.isdigit():
+        return manual, None, "manual"
+    codes = _codes_load()
+    hit = codes.get(s.esr_code)
+    if hit and hit["until"] > time.time():
+        return (hit["code"], hit.get("name"), hit["how"]) if hit.get("code") else None
+    found = None
+    for code, need_name in code_candidates(s.esr_code):
+        exists, name = _probe_code(code)
+        if not exists:
+            continue
+        same = bool(name) and same_name(name, s.name)
+        if need_name and not same:
+            continue
+        found = (code, name, "exact" if (same or not need_name) else "partial")
+        break
+    with _LOCK:
+        codes[s.esr_code] = ({"code": found[0], "name": found[1], "how": found[2], "until": time.time() + CODE_TTL} if found
+                             else {"code": None, "until": time.time() + CODE_MISS_TTL})
+        _codes_save()
+    return found
+
+
+def station_days(report: str, code: str, start: date, end: date) -> dict[str, dict]:
+    """{date: {field: sum of both shifts}} for one station by its code: one small request, cached for 10 minutes."""
+    key = (report, code, start.isoformat(), end.isoformat())
+    hit = _STATION_CACHE.get(key)
+    if hit and hit[0] > time.time():
+        return hit[1]
+    rows = _get(f"{report}/station/", {"station_code": code, "from_date": start.isoformat(), "to_date": end.isoformat()})
+    out: dict[str, dict] = {}
+    for per_day in _reduce(report, rows).values():
+        out.update(per_day)
+    with _LOCK:
+        if len(_STATION_CACHE) > 500:
+            _STATION_CACHE.clear()
+        _STATION_CACHE[key] = (time.time() + 600, out)
+    return out
+
+
+def resolve(s: m.Station) -> dict | None:
+    """Where to get this station's reports: by station code (fast, exact) or, failing that, by name in a branch report."""
+    c = station_code(s)
+    if c:
+        return {"mode": "station", "code": c[0], "name": c[1] or s.name, "how": c[2], "branch": None}
+    mt = match_station(s)
+    if mt:
+        # a reporting-system station already tied to another of our stations by its code is not handed out again by name
+        taken = {v.get("name") for k, v in _codes_load().items() if v.get("code") and k != s.esr_code}
+        if mt[0] not in taken:
+            return {"mode": "branch", "code": None, "name": mt[0], "branch": mt[1], "how": mt[2]}
+    return None
+
+
+def days(report: str, src: dict, start: date, end: date) -> dict[str, dict]:
+    if src["mode"] == "station":
+        return station_days(report, src["code"], start, end)
+    return report_days(report, src["name"], src["branch"], start, end)

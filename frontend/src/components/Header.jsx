@@ -3,9 +3,10 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import dayjs from "dayjs";
-import { Map, LayoutDashboard, ScanLine, Cctv, UserRound, Mail, Lock, SunMoon, Languages, LogOut, Check, UsersRound, ChevronRight } from "lucide-react";
+import { Map, LayoutDashboard, ScanLine, Cctv, UserRound, Mail, Lock, SunMoon, Languages, LogOut, Check, UsersRound, ChevronRight, ToggleRight } from "lucide-react";
 import { LogoMark } from "./Logo";
 import PaletteRoute from "./PaletteRoute";
+import SectionsModal from "./SectionsModal";
 import RailTrack from "./RailTrack";
 import { useAuth, canSee, homePath, isAdmin } from "../store/auth";
 import { get } from "../api";
@@ -19,6 +20,7 @@ export default function Header() {
   const { user, logout, theme, setTheme, setLang, lang, lock } = useAuth();
   const nav = useNavigate();
   const [unread, setUnread] = useState(0);
+  const [sections, setSections] = useState(false);
   // collapsed by default; the header slides out from the left edge on the arrow
   const [open, setOpenState] = useState(session.open);
   const setOpen = (v) => setOpenState((o) => (session.open = typeof v === "function" ? v(o) : v));
@@ -51,7 +53,10 @@ export default function Header() {
     { key: "who", disabled: true, label: <div style={{ padding: "4px 0" }}><b>{user.fullName}</b><div className="rv-muted" style={{ fontSize: 12 }}>{user.role}</div></div> },
     { type: "divider" },
     { key: "profile", icon: <UserRound size={16} />, label: t("profile.profile"), onClick: () => nav("/profile") },
-    ...(isAdmin(user) ? [{ key: "users", icon: <UsersRound size={16} />, label: t("users.title"), onClick: () => nav("/users") }] : []),
+    ...(isAdmin(user) ? [
+      { key: "users", icon: <UsersRound size={16} />, label: t("users.title"), onClick: () => nav("/users") },
+      { key: "sections", icon: <ToggleRight size={16} />, label: t("sections.menu"), onClick: () => setSections(true) },
+    ] : []),
     { key: "inbox", icon: <Mail size={16} />, label: <Badge count={unread} size="small" offset={[10, 0]}>{t("profile.inbox")}</Badge>, onClick: () => nav("/profile?tab=inbox") },
     { key: "theme", icon: <SunMoon size={16} />, label: `${t("profile.theme")}: ${theme === "dark" ? t("profile.dark") : t("profile.light")}`, onClick: () => setTheme(theme === "dark" ? "light" : "dark") },
     {
@@ -74,6 +79,11 @@ export default function Header() {
   return (
     <header className={`rv-header ${open ? "open" : ""}`}>
       <NavLink to={homePath(user)} className="rv-header-brand" aria-label="SilkRail"><LogoMark size={38} /></NavLink>
+      {!open && (
+        <button type="button" className="rv-header-plate" onClick={() => setOpen(true)} title={t("nav.menu")}>
+          <span>Silk</span><b>Rail</b>
+        </button>
+      )}
       <div className="rv-header-body" aria-hidden={!open} inert={!open}>
         <div className="rv-header-inner">
           <div className="rv-header-word">
@@ -109,6 +119,7 @@ export default function Header() {
         {!open && unread > 0 && <i className="dot" />}
       </button>
       <RailTrack kind="neon" />
+      {isAdmin(user) && <SectionsModal open={sections} onClose={() => setSections(false)} />}
     </header>
   );
 }

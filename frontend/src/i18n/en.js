@@ -35,7 +35,7 @@ export default {
   },
   palette: { title: "Colour route", hint: "Pick a station: header, dock, emblem and accent are repainted", names: { registon: "Registan", lojuvard: "Lapis", buxoro: "Bukhara brick", xiva: "Khiva gold", atlas: "Atlas silk", paxta: "Cotton", tun: "Night run" } },
   users: {
-    stationTabs: "Station card sections", allTabs: "All station sections", tabsCount: "{{n}} of {{total}}", pickTab: "Pick at least one station section", tabsHint: "Which tabs the user sees when opening a station on the map.", tabsNeedMap: "The station card opens from the map: give the user access to the Map section.", noStationTabs: "No station card sections are open to you. Contact the administrator.", title: "Users", subtitle: "Accounts and section access", add: "Add user", edit: "Edit",
+    granted: "Access to hidden sections", grantedHint: "These sections are switched off for everyone. Ticked ones are opened for this user as an exception.", grantedShort: "hidden", stationTabs: "Station card sections", allTabs: "All station sections", tabsCount: "{{n}} of {{total}}", pickTab: "Pick at least one station section", tabsHint: "Which tabs the user sees when opening a station on the map.", tabsNeedMap: "The station card opens from the map: give the user access to the Map section.", noStationTabs: "No station card sections are open to you. Contact the administrator.", title: "Users", subtitle: "Accounts and section access", add: "Add user", edit: "Edit",
     fullName: "Full name", pages: "Allowed sections", allPages: "All sections", onlySelected: "Selected only", noPages: "No access",
     pickPage: "Pick at least one section", adminAll: "Administrators see every section.", created: "Created", newPassword: "New password (optional)",
     saved: "User saved", deleted: "User deleted", deleteConfirm: "Delete this user?", taken: "This username already exists",
@@ -53,7 +53,7 @@ export default {
   },
   wip: { badge: "in development", title: "This section is in development", text: "We are preparing this section: connecting real data and checking the calculations. Once it is ready it will open for all users.", hidden: "Only administrators see it; it is hidden from users" },
   traffic2: {
-    moves: "Received and dispatched", waiting: "Under loading/unloading", in: "Received", out: "Dispatched", waitLoad: "Under loading", waitUnload: "Under unloading",
+    code: "code", moves: "Received and dispatched", waiting: "Under loading/unloading", in: "Received", out: "Dispatched", waitLoad: "Under loading", waitUnload: "Under unloading",
     title: { moves: "Received and dispatched", load: "Wagons loaded and unloaded", waiting: "Wagons under loading and unloading" },
     unitTbd: "trains or wagons — being confirmed", unitHint: "MTU report fields arrival / departure: the unit is still being confirmed with the system owners.",
     avgTag: "average", perDay: "daily average", period: "Period",
@@ -71,6 +71,12 @@ export default {
     requests: "Wagon supply requests", requested: "Requested", done: "Fulfilled", fulfilment: "Fulfilment", wagonType: "Wagon type",
     notes: "Removal log ({{n}})", day: "day", night: "night",
     wagons: { kr: "Covered", pl: "Flat", pv: "Gondola", chs: "Tank", zer: "Grain hopper", sem: "Cement hopper", fit: "Container flat", pr: "Other" },
+  },
+  sections: {
+    menu: "Station sections", title: "Station section visibility", saved: "Section visibility saved",
+    hint: "A switched-off section is visible to administrators only. For everyone else it disappears from the station card.",
+    forAll: "visible to all", adminsOnly: "admins only",
+    exception: "Exception: a switched-off section can be opened for a single user in their card — the “Access to hidden sections” block.",
   },
   records: {
     roads: { count: "{{n}} roads ({{active}} active)", length: "active total length: {{n}} m", clear: "Delete all", clearConfirm: "Delete all {{n}} access roads of the station?", deleteConfirm: "Delete road “{{owner}}”?", emptyTitle: "No access roads entered yet", emptyAdmin: "Download the Excel template, hand it to the road owners, then upload the filled file with “Upload Excel”." }, download: "Excel template", upload: "Upload Excel", imported: "Records imported: {{n}}", errTitle: "The file has errors", errHint: "Nothing was changed. Fix the cells in the file and upload it again.", row: "Row", col: "Column", problem: "Problem", value: "Value", staff: { more: "More", deleteAllN: "Delete all ({{n}})", selected: "Selected: {{n}}", deleteSelected: "Delete the selected employees ({{n}})?", deleteAll: "Delete all", deleteAllTitle: "Delete the whole staff of the station?", deleteAllText: "All {{n}} employees and their KPI will be deleted. This cannot be undone.", deleteAllOk: "Delete {{n}}", deletedAll: "Employees deleted: {{n}}", add: "Add employee", edit: "Edit employee", deleteConfirm: "Delete this employee?", gender: "Gender", editRates: "Edit staff positions", emptyTitle: "No staff entered yet", emptyAdmin: "Add employees by hand, or download the Excel template, fill it in and upload it back.", emptyViewer: "The administrator has not filled this in yet." }, tracks: { clear: "Clear park", clearConfirm: "Delete all {{n}} tracks of “{{park}}”?", deleteConfirm: "Delete track № {{no}}?", emptyPark: "No tracks entered in “{{park}}” yet", count: "{{n}} tracks", capacity: "capacity {{n}} wagons", emptyTitle: "No parks and tracks entered yet", emptyAdmin: "Download the Excel template, hand it to the people in charge, then upload the filled file: tracks are sorted into parks." },
@@ -127,7 +133,7 @@ export default {
     },
   },
   station: {
-    groups: { about: "Station", infra: "Infrastructure", team: "Team", ops: "Operations", wip: "In development" }, edit: { button: "Edit", title: "Station details", phone: "Phone" },
+    groups: { about: "Station", infra: "Infrastructure", team: "Team", ops: "Operations", wip: "More" }, edit: { button: "Edit", title: "Station details", phone: "Phone" },
     tabs: {
       home: "Overview", staff: "Staff", tech: "Technical", cadastre: "Cadastre", kpi: "KPI", indicators: "Indicators",
       traffic: "Traffic", emm: "EDR", kmo: "Inspection", income: "Income & expense", finance: "Financials",
@@ -218,5 +224,6 @@ export default {
     "П": "Tickets for all passenger trains, baggage", "Б": "Tickets, no baggage", "О": "Suburban trains, no baggage",
     "8н": "20 t containers (sidings)", "10н": "30 t containers (sidings)", X: "No freight or passenger operations",
   },
-  weather: { fog: "Fog", rain: "Rain", snow: "Snow", storm: "Thunderstorm", live: "Now", estimate: "Estimate", clear: "Clear", cloudy: "Cloudy", partly: "Partly cloudy", wind: "Windy", humidity: "Humidity", windSpeed: "Wind (m/s)" },
+  weather: { fog: "Fog", rain: "Rain", snow: "Snow", storm: "Thunderstorm", live: "Now", estimate: "Estimate", clear: "Clear", cloudy: "Cloudy", partly: "Partly cloudy", wind: "Windy", humidity: "Humidity", windSpeed: "Wind (m/s)", windShort: "Wind", ms: "m/s", precip: "Precipitation", mm: "mm", feels: "feels like {{t}}", from: "Wind from {{dir}}",
+    next: "Next hours", dirs: ["N", "NE", "E", "SE", "S", "SW", "W", "NW"] },
 };

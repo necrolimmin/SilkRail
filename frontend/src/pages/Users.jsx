@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Pencil, Trash2, UserPlus } from "lucide-react";
 import api, { get } from "../api";
 import { PAGE_PATHS, useAuth } from "../store/auth";
-import { STATION_TAB_KEYS, WIP_TABS } from "./station/tabKeys";
+import { STATION_TAB_KEYS } from "./station/tabKeys";
 import { dateTime } from "../utils";
 
 const PAGES = Object.keys(PAGE_PATHS);
@@ -23,6 +23,8 @@ export default function Users() {
   const access = Form.useWatch("access", form);
   const tabsAccess = Form.useWatch("tabsAccess", form);
   const pagesPicked = Form.useWatch("pages", form);
+  const hiddenTabs = me.hiddenStationTabs || []; // switched off for everyone in the sections switchboard
+  const isHidden = (k) => hiddenTabs.includes(k);
 
   const load = () => { setLoading(true); get("/api/admin/users").then(setRows).catch(() => message.error(t("common.error"))).finally(() => setLoading(false)); };
   useEffect(load, []); // eslint-disable-line
@@ -34,8 +36,8 @@ export default function Users() {
     setEditing(row || {});
     form.setFieldsValue(row
       ? { username: row.username, fullName: row.fullName, role: row.role, password: "", access: row.restricted ? "some" : "all", pages: row.pages,
-          tabsAccess: row.tabsRestricted ? "some" : "all", stationTabs: row.stationTabs }
-      : { username: "", fullName: "", role: "viewer", password: "", access: "some", pages: ["map"], tabsAccess: "all", stationTabs: ["home"] });
+          tabsAccess: row.tabsRestricted ? "some" : "all", stationTabs: row.stationTabs, grantedTabs: row.grantedTabs || [] }
+      : { username: "", fullName: "", role: "viewer", password: "", access: "some", pages: ["map"], tabsAccess: "all", stationTabs: ["home"], grantedTabs: [] });
   };
 
   const submit = async (v) => {
@@ -45,6 +47,7 @@ export default function Users() {
     const body = {
       fullName: v.fullName, role: v.role, password: v.password || undefined,
       ...(tabsRestricted ? { stationTabs: v.stationTabs } : { allStationTabs: true }),
+      grantedTabs: ADMIN_ROLES.includes(v.role) ? [] : (v.grantedTabs || []).filter(isHidden),
     };
     try {
       if (isNew) await api.post("/api/admin/users", { ...body, username: v.username, pages: restricted ? v.pages : null, stationTabs: tabsRestricted ? v.stationTabs : null });
@@ -75,9 +78,13 @@ export default function Users() {
     },
     {
       title: t("users.stationTabs"), dataIndex: "stationTabs", responsive: ["lg"],
-      render: (tabs, r) => (r.tabsRestricted
-        ? <Tag color="cyan" title={tabs.map((k) => t(`station.tabs.${k}`)).join(", ")}>{t("users.tabsCount", { n: tabs.filter((k) => !WIP_TABS.has(k)).length, total: STATION_TAB_KEYS.length - WIP_TABS.size })}</Tag>
-        : <Tag color="green">{t("users.allTabs")}</Tag>),
+      render: (tabs, r) => (
+        <span>{(r.tabsRestricted
+        ? <Tag color="cyan" title={tabs.filter((k) => !isHidden(k)).map((k) => t(`station.tabs.${k}`)).join(", ")}>{t("users.tabsCount", { n: tabs.filter((k) => !isHidden(k)).length, total: STATION_TAB_KEYS.length - hiddenTabs.length })}</Tag>
+        : <Tag color="green">{t("users.allTabs")}</Tag>)}
+          {r.grantedTabs?.length > 0 && <Tag color="gold" title={r.grantedTabs.map((k) => t(`station.tabs.${k}`)).join(", ")}>+{r.grantedTabs.length} {t("users.grantedShort")}</Tag>}
+        </span>
+      ),
     },
     { title: t("users.created"), dataIndex: "createdAt", render: dateTime, responsive: ["md"] },
     {
@@ -141,9 +148,14 @@ export default function Users() {
               {tabsAccess === "some" && (
                 <Form.Item name="stationTabs" rules={[{ required: true, type: "array", min: 1, message: t("users.pickTab") }]} style={{ marginTop: -8 }}>
                   <Checkbox.Group className="rv-tab-checks" options={STATION_TAB_KEYS.map((k) => ({
-                    value: k, disabled: WIP_TABS.has(k),
-                    label: WIP_TABS.has(k) ? <span>{t(`station.tabs.${k}`)} <span className="rv-muted" style={{ fontSize: 11 }}>· {t("wip.badge")}</span></span> : t(`station.tabs.${k}`),
+                    value: k, disabled: isHidden(k),
+                    label: isHidden(k) ? <span>{t(`station.tabs.${k}`)} <span className="rv-muted" style={{ fontSize: 11 }}>· {t("sections.adminsOnly")}</span></span> : t(`station.tabs.${k}`),
                   }))} />
+                </Form.Item>
+              )}
+              {hiddenTabs.length > 0 && (
+                <Form.Item name="grantedTabs" label={t("users.granted")} extra={t("users.grantedHint")}>
+                  <Checkbox.Group className="rv-tab-checks" options={STATION_TAB_KEYS.filter(isHidden).map((k) => ({ value: k, label: t(`station.tabs.${k}`) }))} />
                 </Form.Item>
               )}
             </>

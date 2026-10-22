@@ -74,18 +74,28 @@ def live_weather(lat: float, lng: float) -> dict | None:
     if hit and hit[0] > time.time():
         return hit[1]
     url = ("https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f"
-           "&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code,is_day"
+           "&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,"
+           "weather_code,is_day&hourly=temperature_2m,weather_code,is_day&forecast_hours=8"
            "&wind_speed_unit=ms&timezone=auto") % (lat, lng)
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "SilkRail/1.0"})
         with urllib.request.urlopen(req, timeout=5) as r:
-            cur = json.load(r)["current"]
+            body = json.load(r)
+            cur = body["current"]
     except Exception as e:  # network down, service error, bad payload
         log.warning("weather unavailable for %s: %s", key, e)
         return None
     out = {"temp": round(cur["temperature_2m"], 1), "humidity": round(cur["relative_humidity_2m"]),
            "wind": round(cur["wind_speed_10m"], 1), "condition": _wmo(int(cur["weather_code"])),
-           "isDay": bool(cur.get("is_day", 1)), "observedAt": cur.get("time"), "live": True, "source": "Open-Meteo"}
+           "isDay": bool(cur.get("is_day", 1)), "observedAt": cur.get("time"), "live": True, "source": "Open-Meteo",
+           "feels": round(cur["apparent_temperature"], 1) if cur.get("apparent_temperature") is not None else None,
+           "windDir": cur.get("wind_direction_10m"), "precip": cur.get("precipitation")}
+    # the next six whole hours after the observation (local station time)
+    h = body.get("hourly") or {}
+    now = (cur.get("time") or "")[:13]
+    out["hours"] = [{"time": tm[11:16], "temp": round(tp), "condition": _wmo(int(wc)), "isDay": bool(d)}
+                    for tm, tp, wc, d in zip(h.get("time", []), h.get("temperature_2m", []), h.get("weather_code", []), h.get("is_day", []))
+                    if tm[:13] > now and tp is not None and wc is not None][:6]
     _WEATHER_CACHE[key] = (time.time() + WEATHER_TTL, out)
     return out
 
@@ -423,24 +433,24 @@ def _api_station(s: m.Station):
     if not external.enabled():
         raise _NoSource("not_configured")
     try:
-        match = external.match_station(s)
+        src = external.resolve(s)
     except external.ExternalError as ex:
         raise HTTPException(502, f"external_{ex}")
-    if not match:
+    if not src:
         raise _NoSource("not_mapped")
-    return match
+    return src
 
 
 def _days(report: str, match, a: date, e: date) -> dict:
     from .. import external
     try:
-        return external.report_days(report, match[0], match[1], a, e)
+        return external.days(report, match, a, e)
     except external.ExternalError as ex:
         raise HTTPException(502, f"external_{ex}")
 
 
 def _meta(match, a: date, e: date, days: dict) -> dict:
-    return {"source": "api", "apiStation": match[0], "branch": match[1], "match": match[2],
+    return {"source": "api", "apiStation": match["name"], "branch": match["branch"], "match": match["how"], "code": match["code"],
             "from": a.isoformat(), "to": e.isoformat(), "reported": len(days)}
 
 
@@ -510,16 +520,11 @@ def traffic(sid: int, kind: str = "moves", mode: str = "days", start: str | None
     else:
         a = e - timedelta(days=13) if mode == "days" else date(e.year, 1, 1) if mode == "months" else API_HISTORY_START
     a = max(a, API_HISTORY_START)
-    if not external.enabled():
-        return {"source": "none", "reason": "not_configured", "rows": []}
     try:
-        match = external.match_station(s)
-        if not match:
-            return {"source": "none", "reason": "not_mapped", "rows": []}
-        api_name, branch, how = match
-        days = external.freight_days(api_name, branch, a, e)
-    except external.ExternalError as ex:
-        raise HTTPException(502, f"external_{ex}")
+        match = _api_station(s)
+    except _NoSource as ns:
+        return {"source": "none", "reason": ns.reason, "rows": []}
+    days = _days("freight-report", match, a, e)
     f_in, f_out = TRAFFIC_KINDS[kind]
     stock = kind == "waiting"  # wagons standing = a snapshot per shift: average it, never sum it
     cut = {"days": 10, "months": 7, "years": 4}[mode]
@@ -542,8 +547,7 @@ def traffic(sid: int, kind: str = "moves", mode: str = "days", start: str | None
     else:
         rows = [{"period": p, "in": int(v[0]), "out": int(v[1])} for p, v in sorted(buckets.items())]
         totals = {"in": sum(r["in"] for r in rows), "out": sum(r["out"] for r in rows)}
-    return {"source": "api", "apiStation": api_name, "branch": branch, "match": how, "from": a.isoformat(), "to": e.isoformat(),
-            "reported": len(days), "aggregate": "avg" if stock else "sum", "rows": rows, "totals": totals}
+    return {**_meta(match, a, e, days), "aggregate": "avg" if stock else "sum", "rows": rows, "totals": totals}
 
 
 @router.get("/{sid}/train-passes", dependencies=[Depends(require_station_tab("traffic"))])

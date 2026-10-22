@@ -32,6 +32,8 @@ export function AuthProvider({ children }) {
     return data.user;
   }, []);
 
+  const refreshUser = useCallback(() => api.get("/api/user/me").then((r) => { setUser(r.data); return r.data; }), []);
+
   const logout = useCallback(() => {
     tokens.clear();
     setUser(null);
@@ -52,7 +54,7 @@ export function AuthProvider({ children }) {
   const lock = (v) => { setLocked(v); store.set("rv_locked", v); };
 
   return (
-    <Ctx.Provider value={{ user, ready, login, logout, theme, setTheme, setLang, lang: i18n.language, locked, lock, palette, setPalette }}>
+    <Ctx.Provider value={{ user, ready, login, logout, theme, setTheme, setLang, lang: i18n.language, locked, lock, palette, setPalette, refreshUser }}>
       {children}
     </Ctx.Provider>
   );

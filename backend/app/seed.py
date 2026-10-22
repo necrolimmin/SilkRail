@@ -515,6 +515,12 @@ def run():
         db.commit()
         print(f"map edits: {len(edits.get('stations', {}))} stations, {len(edits.get('markers', []))} markers")
 
+    # official MTU station lists: names as on the scheme, explicit MTU membership, stations missing from OSM
+    from . import sync_mtu
+    changed = sync_mtu.sync(db)
+    db.commit()
+    print(f"MTU registry: {sum(1 for r in changed if r['action'] != 'same')} stations updated")
+
     # staff and park tracks entered by admins (data/station_records.json)
     from . import records
     restored = records.restore(db)

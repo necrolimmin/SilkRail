@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Sun, Moon, Cloud, CloudSun, CloudMoon, CloudFog, CloudRain, CloudSnow, CloudLightning, Wind, ImagePlus, Trash2, ChevronLeft, ChevronRight, Pencil, Radio,
-  FolderArchive, Footprints, Maximize,
+  FolderArchive, Footprints, Maximize, Droplets, Umbrella, Navigation2,
 } from "lucide-react";
 import api, { get } from "../../api";
 import { useAuth, isAdmin } from "../../store/auth";
@@ -95,6 +95,16 @@ export function PhotoHero({ st, onChange, fallback }) {
 /* ---------- live weather ---------- */
 const WICON = { clear: [Sun, Moon], partly: [CloudSun, CloudMoon], cloudy: [Cloud, Cloud], fog: [CloudFog, CloudFog], rain: [CloudRain, CloudRain], snow: [CloudSnow, CloudSnow], storm: [CloudLightning, CloudLightning], wind: [Wind, Wind] };
 
+// sky tint behind the card: condition by day, one night sky for all
+const SKY = { clear: "#7cc4f5", partly: "#9cc3e4", cloudy: "#a9b8c8", fog: "#c0c8d2", rain: "#7f97b2", snow: "#c9def3", storm: "#6b7c99", wind: "#9fc7d8" };
+function WxIcon({ cond, day, ...rest }) {
+  const [D, N] = WICON[cond] || WICON.clear;
+  const I = day ? D : N;
+  return <I color={iconColor(cond, day)} aria-hidden {...rest} />;
+}
+const iconColor = (cond, day) => (!day ? "#818cf8" : cond === "clear" || cond === "partly" ? "#f59e0b" : "#64748b");
+const signed = (v) => `${v > 0 ? "+" : ""}${v}°`;
+
 export function WeatherCard({ st }) {
   const { t } = useTranslation();
   const [w, setW] = useState(null);
@@ -105,35 +115,55 @@ export function WeatherCard({ st }) {
     const id = setInterval(load, 10 * 60 * 1000);
     return () => { alive = false; clearInterval(id); };
   }, [st.id]);
-  const [Day, Night] = WICON[w?.condition] || WICON.clear;
-  const Icon = w && !w.isDay ? Night : Day;
+  const day = w ? w.isDay : true;
+  const dirs = t("weather.dirs", { returnObjects: true });
+  const dir = w?.windDir != null && Array.isArray(dirs) ? dirs[Math.round(w.windDir / 45) % 8] : null;
   return (
-    <div className="rv-card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 12 }}>
-      <div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-          <h3 style={{ margin: 0 }}>{t("station.weather")}</h3>
-          {w && (w.live
-            ? <span className="rv-live-chip"><Radio size={12} />{t("weather.live")}</span>
-            : <Tag>{t("weather.estimate")}</Tag>)}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 10, minHeight: 64 }}>
-          {w ? (
-            <>
-              <Icon size={48} color={w.isDay ? "#f59e0b" : "#818cf8"} />
-              <div><div style={{ fontSize: 34, fontWeight: 800, lineHeight: 1.1 }}>{w.temp > 0 ? "+" : ""}{w.temp}°C</div><div className="rv-muted">{t(`weather.${w.condition}`)}</div></div>
-            </>
-          ) : <span className="rv-muted">{t("common.loading")}</span>}
-        </div>
+    <div className={`rv-card rv-wx ${day ? "" : "night"}`} style={{ "--sky": day ? SKY[w?.condition] || SKY.clear : "#4f46e5" }}>
+      <div className="top">
+        <h3>{t("station.weather")}</h3>
+        {w && (w.live
+          ? <span className="rv-live-chip"><Radio size={12} />{t("weather.live")}</span>
+          : <Tag>{t("weather.estimate")}</Tag>)}
       </div>
-      {w && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 16px", fontSize: 13 }}>
-          <span className="rv-muted">{t("weather.humidity")}: <b style={{ color: "var(--rv-text)" }}>{w.humidity}%</b></span>
-          <span className="rv-muted">{t("weather.windSpeed")}: <b style={{ color: "var(--rv-text)" }}>{w.wind}</b></span>
-        </div>
-      )}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+      {w ? (
+        <>
+          <div className="now">
+            <WxIcon cond={w.condition} day={day} size={52} strokeWidth={1.6} />
+            <div>
+              <b className="temp">{signed(w.temp)}</b>
+              <span className="cond">{t(`weather.${w.condition}`)}{w.feels != null && <>, {t("weather.feels", { t: signed(w.feels) })}</>}</span>
+            </div>
+          </div>
+          <dl className="facts">
+            <div><dt><Droplets size={14} aria-hidden />{t("weather.humidity")}</dt><dd>{w.humidity}%</dd></div>
+            <div>
+              <dt><Wind size={14} aria-hidden />{t("weather.windShort")}</dt>
+              <dd>
+                {w.wind} {t("weather.ms")}
+                {dir && <span className="dir" title={t("weather.from", { dir })}><Navigation2 size={12} style={{ transform: `rotate(${w.windDir + 180}deg)` }} aria-hidden />{dir}</span>}
+              </dd>
+            </div>
+            {w.precip != null && <div><dt><Umbrella size={14} aria-hidden />{t("weather.precip")}</dt><dd>{w.precip} {t("weather.mm")}</dd></div>}
+          </dl>
+          {w.hours?.length > 0 && (
+            <ol className="hours" aria-label={t("weather.next")}>
+              {w.hours.map((h) => {
+                return (
+                  <li key={h.time} title={t(`weather.${h.condition}`)}>
+                    <span>{h.time.slice(0, 2)}</span>
+                    <WxIcon cond={h.condition} day={h.isDay} size={18} strokeWidth={1.8} />
+                    <b>{signed(h.temp)}</b>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </>
+      ) : <span className="rv-muted" style={{ flex: 1 }}>{t("common.loading")}</span>}
+      <div className="foot">
         <Tag color={st.isActive ? "green" : "default"}>{st.isActive ? t("map.active") : t("map.passive")}</Tag>
-        {w?.live && <span className="rv-muted" style={{ fontSize: 11 }}>{w.source} · {dateTime(w.observedAt)}</span>}
+        {w?.live && <span className="rv-muted">{w.source}, {dateTime(w.observedAt)}</span>}
       </div>
     </div>
   );

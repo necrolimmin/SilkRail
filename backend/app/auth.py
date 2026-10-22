@@ -97,10 +97,52 @@ STATION_TABS = ["home", "staff", "tech", "cadastre", "kpi", "indicators", "traff
                 "roads", "computers", "cameras", "pano"]
 
 
-def user_station_tabs(user: User) -> list[str]:
+# switched off for everyone until an admin turns them on (the sections that are still being built)
+DEFAULT_HIDDEN_TABS = ["kpi", "emm", "kmo", "income"]
+HIDDEN_TABS_KEY = "hidden_station_tabs"
+_hidden_cache: tuple[float, list[str]] = (0.0, [])
+
+
+def hidden_station_tabs() -> list[str]:
+    """Station tabs an admin has switched off for all users (cached for a few seconds)."""
+    global _hidden_cache
+    if _hidden_cache[0] > time.time():
+        return _hidden_cache[1]
+    from .db import SessionLocal
+    from .models import Setting
+    with SessionLocal() as db:
+        row = db.get(Setting, HIDDEN_TABS_KEY)
+    tabs = [t for t in STATION_TABS if t in (row.value if row and isinstance(row.value, list) else DEFAULT_HIDDEN_TABS)]
+    _hidden_cache = (time.time() + 5, tabs)
+    return tabs
+
+
+def set_hidden_station_tabs(db: Session, tabs: list[str]) -> list[str]:
+    global _hidden_cache
+    from .models import Setting
+    clean = [t for t in STATION_TABS if t in tabs]
+    row = db.get(Setting, HIDDEN_TABS_KEY) or Setting(key=HIDDEN_TABS_KEY)
+    row.value = clean
+    db.add(row)
+    db.commit()
+    _hidden_cache = (0.0, [])
+    return clean
+
+
+def user_base_tabs(user: User) -> list[str]:
+    """What the user is allowed in principle (before the global switch-off)."""
     if user.role in ADMIN_ROLES or user.allowed_station_tabs is None:
         return list(STATION_TABS)
     return [t for t in STATION_TABS if t in user.allowed_station_tabs]
+
+
+def user_station_tabs(user: User) -> list[str]:
+    """Tabs the user actually sees: admins — all; others — allowed tabs minus the ones switched off for everyone,
+    plus the switched-off tabs this user was explicitly granted."""
+    if user.role in ADMIN_ROLES:
+        return list(STATION_TABS)
+    allowed, hidden, granted = user_base_tabs(user), hidden_station_tabs(), user.granted_station_tabs or []
+    return [t for t in STATION_TABS if (t in allowed and t not in hidden) or t in granted]
 
 
 def require_station_tab(tab: str):

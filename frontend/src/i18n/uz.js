@@ -35,7 +35,7 @@ export default {
   },
   palette: { title: "Rang yo'nalishi", hint: "Bekatni tanlang: yuqori va pastki panel, belgi va urg'u rangi o'zgaradi", names: { registon: "Registon", lojuvard: "Lojuvard", buxoro: "Buxoro g'ishti", xiva: "Xiva oltini", atlas: "Atlas", paxta: "Paxta", tun: "Tungi reys" } },
   users: {
-    stationTabs: "Stansiya kartasi bo'limlari", allTabs: "Stansiyaning barcha bo'limlari", tabsCount: "{{total}} tadan {{n}}", pickTab: "Kamida bitta stansiya bo'limini tanlang", tabsHint: "Xaritada stansiyani ochganda foydalanuvchi qaysi bo'limlarni ko'radi.", tabsNeedMap: "Stansiya kartasi xaritadan ochiladi — foydalanuvchiga «Xarita» bo'limini bering.", noStationTabs: "Sizga stansiya kartasining birorta bo'limi ochilmagan. Administratorga murojaat qiling.", title: "Foydalanuvchilar", subtitle: "Hisoblar va bo'limlarga kirish huquqi", add: "Foydalanuvchi qo'shish", edit: "Tahrirlash",
+    granted: "Yashirilgan bo'limlarga ruxsat", grantedHint: "Bu bo'limlar hamma uchun o'chirilgan. Belgilanganlari shu foydalanuvchiga istisno tariqasida ochiladi.", grantedShort: "yashirin", stationTabs: "Stansiya kartasi bo'limlari", allTabs: "Stansiyaning barcha bo'limlari", tabsCount: "{{total}} tadan {{n}}", pickTab: "Kamida bitta stansiya bo'limini tanlang", tabsHint: "Xaritada stansiyani ochganda foydalanuvchi qaysi bo'limlarni ko'radi.", tabsNeedMap: "Stansiya kartasi xaritadan ochiladi — foydalanuvchiga «Xarita» bo'limini bering.", noStationTabs: "Sizga stansiya kartasining birorta bo'limi ochilmagan. Administratorga murojaat qiling.", title: "Foydalanuvchilar", subtitle: "Hisoblar va bo'limlarga kirish huquqi", add: "Foydalanuvchi qo'shish", edit: "Tahrirlash",
     fullName: "F.I.Sh.", pages: "Ruxsat etilgan bo'limlar", allPages: "Barcha bo'limlar", onlySelected: "Faqat tanlanganlar", noPages: "Ruxsat yo'q",
     pickPage: "Kamida bitta bo'limni tanlang", adminAll: "Administratorlar barcha bo'limlarni ko'radi.", created: "Yaratilgan", newPassword: "Yangi parol (ixtiyoriy)",
     saved: "Foydalanuvchi saqlandi", deleted: "Foydalanuvchi o'chirildi", deleteConfirm: "Foydalanuvchi o'chirilsinmi?", taken: "Bunday login mavjud",
@@ -53,7 +53,7 @@ export default {
   },
   wip: { badge: "ishlab chiqilmoqda", title: "Bo'lim ishlab chiqilmoqda", text: "Ushbu bo'limni tayyorlayapmiz: haqiqiy ma'lumotlarni ulab, hisob-kitoblarni tekshiryapmiz. Tayyor bo'lgach, u barcha foydalanuvchilar uchun ochiladi.", hidden: "Faqat administratorlar ko'radi — foydalanuvchilardan yashirilgan" },
   traffic2: {
-    moves: "Qabul va jo'natish", waiting: "Ortish/tushirishda", in: "Qabul qilingan", out: "Jo'natilgan", waitLoad: "Ortishda turgan", waitUnload: "Tushirishda turgan",
+    code: "kod", moves: "Qabul va jo'natish", waiting: "Ortish/tushirishda", in: "Qabul qilingan", out: "Jo'natilgan", waitLoad: "Ortishda turgan", waitUnload: "Tushirishda turgan",
     title: { moves: "Qabul qilish va jo'natish", load: "Vagonlarni ortish va tushirish", waiting: "Ortish va tushirishda turgan vagonlar" },
     unitTbd: "poezd yoki vagon — aniqlanmoqda", unitHint: "MTU hisobotidagi arrival / departure maydonlari: o'lchov birligi tizim egalaridan aniqlanmoqda.",
     avgTag: "o'rtacha", perDay: "kunlik o'rtacha", period: "Davr",
@@ -71,6 +71,12 @@ export default {
     requests: "Vagon berish bo'yicha talabnomalar", requested: "So'ralgan", done: "Bajarilgan", fulfilment: "Bajarilishi", wagonType: "Vagon turi",
     notes: "Uborka jurnali ({{n}})", day: "kunduz", night: "tun",
     wagons: { kr: "Yopiq vagonlar", pl: "Platformalar", pv: "Yarim vagonlar", chs: "Sisternalar", zer: "Don tashuvchilar", sem: "Sement tashuvchilar", fit: "Fiting platformalar", pr: "Boshqalar" },
+  },
+  sections: {
+    menu: "Stansiya bo'limlari", title: "Stansiya bo'limlarining ko'rinishi", saved: "Bo'limlar ko'rinishi saqlandi",
+    hint: "O'chirilgan bo'limni faqat administratorlar ko'radi. Boshqa foydalanuvchilarda u stansiya kartasidan yo'qoladi.",
+    forAll: "hammaga ko'rinadi", adminsOnly: "faqat adminlar",
+    exception: "Istisno: o'chirilgan bo'limni alohida foydalanuvchiga uning kartasida ochish mumkin — «Yashirilgan bo'limlarga ruxsat» bloki.",
   },
   records: {
     roads: { count: "yo'llar: {{n}} (amalda: {{active}})", length: "amaldagilar uzunligi: {{n}} m", clear: "Barchasini o'chirish", clearConfirm: "Stansiyaning barcha shahobcha yo'llari ({{n}}) o'chirilsinmi?", deleteConfirm: "«{{owner}}» yo'li o'chirilsinmi?", emptyTitle: "Shahobcha yo'llar hali kiritilmagan", emptyAdmin: "«Excel shablon»ni yuklab oling, yo'l egalariga bering, to'ldirilgach «Excel yuklash» orqali qaytaring." }, download: "Excel shablon", upload: "Excel yuklash", imported: "Yuklangan yozuvlar: {{n}}", errTitle: "Faylda xatolar bor", errHint: "Ma'lumotlar o'zgartirilmadi. Fayldagi kataklarni tuzating va qayta yuklang.", row: "Qator", col: "Ustun", problem: "Muammo", value: "Qiymat", staff: { more: "Yana", deleteAllN: "Barchasini o'chirish ({{n}})", selected: "Tanlandi: {{n}}", deleteSelected: "Tanlangan xodimlar ({{n}}) o'chirilsinmi?", deleteAll: "Barchasini o'chirish", deleteAllTitle: "Stansiyaning butun xodimlari o'chirilsinmi?", deleteAllText: "Barcha {{n}} xodim va ularning KPI ma'lumotlari o'chiriladi. Buni qaytarib bo'lmaydi.", deleteAllOk: "{{n}} tasini o'chirish", deletedAll: "O'chirilgan xodimlar: {{n}}", add: "Xodim qo'shish", edit: "Xodimni tahrirlash", deleteConfirm: "Xodim o'chirilsinmi?", gender: "Jinsi", editRates: "Shtat birliklarini o'zgartirish", emptyTitle: "Xodimlar hali kiritilmagan", emptyAdmin: "Xodimlarni qo'lda qo'shing yoki «Excel shablon»ni yuklab oling, to'ldiring va qayta yuklang.", emptyViewer: "Ma'lumotlarni administrator hali kiritmagan." }, tracks: { clear: "Parkni tozalash", clearConfirm: "«{{park}}» parkidagi barcha yo'llar ({{n}}) o'chirilsinmi?", deleteConfirm: "{{no}}-yo'l o'chirilsinmi?", emptyPark: "«{{park}}»ga yo'llar hali kiritilmagan", count: "yo'llar: {{n}}", capacity: "sig'im {{n}} vagon", emptyTitle: "Parklar va yo'llar hali kiritilmagan", emptyAdmin: "«Excel shablon»ni yuklab oling, mas'ullarga bering, to'ldirilgach «Excel yuklash» orqali qaytaring — yo'llar parklarga joylashadi." },
@@ -127,7 +133,7 @@ export default {
     },
   },
   station: {
-    groups: { about: "Stansiya", infra: "Infratuzilma", team: "Jamoa", ops: "Stansiya ishi", wip: "Ishlab chiqilmoqda" }, edit: { button: "Tahrirlash", title: "Stansiya ma'lumotlari", phone: "Telefon" },
+    groups: { about: "Stansiya", infra: "Infratuzilma", team: "Jamoa", ops: "Stansiya ishi", wip: "Qo'shimcha" }, edit: { button: "Tahrirlash", title: "Stansiya ma'lumotlari", phone: "Telefon" },
     tabs: {
       home: "Bosh sahifa", staff: "Xodimlar", tech: "Texnik tavsif", cadastre: "Kadastr", kpi: "KPI", indicators: "Ko'rsatkichlar",
       traffic: "Harakat", emm: "EMM", kmo: "Nazorat ko'rigi", income: "Daromad va xarajat", finance: "Moliyaviy ko'rsatkichlar",
@@ -218,5 +224,6 @@ export default {
     "П": "Barcha yo'lovchi poezdlariga chipta va bagaj", "Б": "Chipta sotish, bagajsiz", "О": "Shahar atrofi poezdlari, bagajsiz",
     "8н": "20 t konteynerlar (shahobcha yo'llarda)", "10н": "30 t konteynerlar (shahobcha yo'llarda)", X: "Yuk va yo'lovchi operatsiyalari yo'q",
   },
-  weather: { fog: "Tuman", rain: "Yomg'ir", snow: "Qor", storm: "Momaqaldiroq", live: "Hozir", estimate: "Taxminiy", clear: "Ochiq", cloudy: "Bulutli", partly: "Qisman bulutli", wind: "Shamolli", humidity: "Namlik", windSpeed: "Shamol (m/s)" },
+  weather: { fog: "Tuman", rain: "Yomg'ir", snow: "Qor", storm: "Momaqaldiroq", live: "Hozir", estimate: "Taxminiy", clear: "Ochiq", cloudy: "Bulutli", partly: "Qisman bulutli", wind: "Shamolli", humidity: "Namlik", windSpeed: "Shamol (m/s)", windShort: "Shamol", ms: "m/s", precip: "Yog'in", mm: "mm", feels: "{{t}} kabi seziladi", from: "Shamol yo'nalishi: {{dir}}",
+    next: "Yaqin soatlar ob-havosi", dirs: ["Shm", "ShmSh", "Shq", "JSh", "Jan", "JG'", "G'ar", "ShmG'"] },
 };

@@ -17,7 +17,16 @@ class User(Base):
     lang: Mapped[str] = mapped_column(String(4), default="uz")
     allowed_pages: Mapped[list | None] = mapped_column(JSON, nullable=True)  # None = all pages
     allowed_station_tabs: Mapped[list | None] = mapped_column(JSON, nullable=True)  # None = all station card tabs
+    # tabs switched off for everyone that this user may still open (explicit exception, wins over the global switch)
+    granted_station_tabs: Mapped[list | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class Setting(Base):
+    """Small key/value store for app-wide switches (e.g. which station tabs are hidden from users)."""
+    __tablename__ = "settings"
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[dict | list | None] = mapped_column(JSON, nullable=True)
 
 
 class LoginHistory(Base):
@@ -88,6 +97,8 @@ class Station(Base):
     staff_rates: Mapped[int] = mapped_column(Integer, default=0)
     country: Mapped[str] = mapped_column(String(64), default="O'zbekiston")
     road_name: Mapped[str] = mapped_column(String(128), default="O'zbekiston Temir Yo'llari (O'TY)")
+    # on the official scheme of its MTU (see mtu_toshkent.py); other points of the MTU are halts, yards, sidings
+    mtu_listed: Mapped[bool] = mapped_column(Boolean, default=False)
     mtu: Mapped[Mtu] = relationship(back_populates="stations")
 
 

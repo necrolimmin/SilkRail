@@ -9,6 +9,9 @@ import { fmt, date } from "../../utils";
 
 const WAGON_TYPES = ["kr", "pl", "pv", "chs", "zer", "sem", "fit", "pr"];
 
+/** True when there is nothing to show: request failed, API not configured or station not mapped. */
+const liveProblem = (data, error) => !!error || (!!data && data.source !== "api");
+
 /** Shared states: not configured / not mapped / source down. Returns null when data is usable. */
 export function LiveState({ data, error }) {
   const { t } = useTranslation();
@@ -30,7 +33,7 @@ export function SourceLine({ data, extra }) {
   if (data?.source !== "api") return null;
   return (
     <div className="rv-source">
-      {t("traffic2.source")} · {t("traffic2.apiStation")}: <b>{data.apiStation}</b>
+      {t("traffic2.source")} · {t("traffic2.apiStation")}: <b>{data.apiStation}</b>{data.code && <span> · {t("traffic2.code")} {data.code}</span>}
       {data.match === "partial" && <span> ({t("traffic2.autoMatched")})</span>}
       {" · "}{t("traffic2.reported", { n: data.reported })}{extra}
     </div>
@@ -48,7 +51,7 @@ export function IndicatorsTab({ st }) {
   const digits = (r) => (r.key === "statWeight" || r.key === "workingPark" ? 1 : 0);
   const items = data?.items || [];
   const shown = items.filter((r) => r.available);
-  const state = <LiveState data={data} error={error} />;
+  const state = liveProblem(data, error) && <LiveState data={data} error={error} />;
   return (
     <div className="rv-grid">
       <div className="rv-card">
@@ -116,7 +119,7 @@ export function FinanceTab({ st }) {
   const { t } = useTranslation();
   const [params, picker, r] = useMonthRange();
   const { data, loading, error } = useFetch(`/api/stations/${st.id}/finance`, params);
-  const state = <LiveState data={data} error={error} />;
+  const state = liveProblem(data, error) && <LiveState data={data} error={error} />;
   const split = (obj) => (
     <div className="rv-split">
       {[["total", "#6366f1", t("common.total")], ["sng", "#f59e0b", t("live.ofWhichSng")]].map(([k, c, label]) => (
@@ -169,7 +172,7 @@ export function WagonRequests({ st }) {
   const { t } = useTranslation();
   const [params, picker] = useMonthRange();
   const { data, loading, error } = useFetch(`/api/stations/${st.id}/wagon-requests`, params);
-  const state = <LiveState data={data} error={error} />;
+  const state = liveProblem(data, error) && <LiveState data={data} error={error} />;
   const rows = (data?.types || []).filter((r) => r.requested || r.done);
   return (
     <div className="rv-card">

@@ -44,14 +44,17 @@ def _hav(a, b):
 def mtus(db: Session = Depends(get_db)):
     out = []
     for x in db.query(m.Mtu).all():
-        total = db.query(func.count(m.Station.id)).filter(m.Station.mtu_id == x.id).scalar()
-        active = db.query(func.count(m.Station.id)).filter(m.Station.mtu_id == x.id, m.Station.is_active).scalar()
+        # an MTU with an official station list (app.sync_mtu) counts only those; halts and yards around them do not
+        listed = db.query(func.count(m.Station.id)).filter(m.Station.mtu_id == x.id, m.Station.mtu_listed).scalar()
+        counted = [m.Station.mtu_id == x.id] + ([m.Station.mtu_listed] if listed else [])
+        total = db.query(func.count(m.Station.id)).filter(*counted).scalar()
+        active = db.query(func.count(m.Station.id)).filter(*counted, m.Station.is_active).scalar()
         corps = db.query(func.count(m.Company.id)).join(m.Station, m.Station.id == m.Company.station_id)\
             .filter(m.Station.mtu_id == x.id).scalar()
         bbox = db.query(func.min(m.Station.lat), func.min(m.Station.lng), func.max(m.Station.lat), func.max(m.Station.lng))\
             .filter(m.Station.mtu_id == x.id).one()
         out.append({"id": x.id, "code": x.code, "name": x.name, "short": x.short, "color": x.color, "lat": x.lat, "lng": x.lng,
-                    "totalStations": total, "activeStations": active, "corporations": corps,
+                    "totalStations": total, "activeStations": active, "hasRegistry": bool(listed), "corporations": corps,
                     "railwayLength": x.railway_length_km, "utilization": x.utilization, "bbox": list(bbox)})
     return out
 
@@ -62,7 +65,8 @@ def stations(mtu: int | None = None, db: Session = Depends(get_db)):
     if mtu:
         q = q.filter(m.Station.mtu_id == mtu)
     return [{"id": s.id, "name": s.name, "code": s.esr_code, "lat": s.lat, "lng": s.lng, "mtuId": s.mtu_id,
-             "isHub": s.is_hub, "isActive": s.is_active, "line": s.line, "kind": s.kind} for s in q.all()]
+             "isHub": s.is_hub, "isActive": s.is_active, "line": s.line, "kind": s.kind, "listed": bool(s.mtu_listed)}
+            for s in q.all()]
 
 
 @router.get("/companies")

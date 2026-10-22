@@ -13,8 +13,10 @@ Base.metadata.create_all(engine)
 _NEW_COLUMNS = [
     ("users", "allowed_pages", "JSON"),
     ("users", "allowed_station_tabs", "JSON"),
+    ("users", "granted_station_tabs", "JSON"),
     ("stations", "country", "VARCHAR(64) DEFAULT 'O''zbekiston'"),
     ("stations", "road_name", "VARCHAR(128) DEFAULT 'O''zbekiston Temir Yo''llari (O''TY)'"),
+    ("stations", "mtu_listed", "BOOLEAN DEFAULT FALSE"),
 ]
 with engine.begin() as conn:
     for table, col, ddl in _NEW_COLUMNS:
@@ -45,6 +47,7 @@ async def isolate_uploads(request, call_next):
 
 for r in (auth_routes, map_routes, station_routes, dashboard_routes, analytics_routes, users_routes, records_routes):
     app.include_router(r.router)
+app.include_router(users_routes.settings_router)
 
 os.makedirs("static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
