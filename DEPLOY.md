@@ -79,6 +79,20 @@ npm run build                     # готовая сборка появится
 
 ---
 
+## Автозапуск после перезагрузки сервера
+
+В `docker-compose.yml` у всех трёх сервисов стоит `restart: unless-stopped`: Docker сам поднимает их после сбоя и после перезагрузки сервера. Нужно только, чтобы сам Docker стартовал вместе с системой (один раз):
+
+```bash
+systemctl enable docker
+systemctl is-enabled docker       # должно быть: enabled
+```
+
+Проверка: `reboot`, подождать 1–2 минуты, зайти снова и выполнить `docker compose ps` в `/home/SilkRail` — все сервисы `Up`.
+Если остановить проект вручную (`docker compose stop` или `down`), после перезагрузки он **не** поднимется — запускать `docker compose up -d`.
+
+---
+
 ## 4. Одноразовые шаги после конкретных обновлений
 
 Выполнять **один раз**, только когда это обновление впервые попало на сервер.
@@ -120,7 +134,14 @@ EXTERNAL_API_URL=https://rabota.mtutoshkent.uz/api
 EXTERNAL_API_KEY=<ключ>
 EXTERNAL_API_BRANCHES=Toshkent MTU
 ```
-После создания или изменения `.env` — перезапуск (раздел 3). Ключ никуда больше не вставлять: ни в код, ни в чат, ни в git.
+После создания или изменения `.env` — перезапуск (раздел 3). В Docker файл попадает внутрь образа при сборке, поэтому нужен именно `docker compose up -d --build`, простой `restart` его не подхватит.
+
+Проверить, что ключ виден бэкенду (должно напечатать `True`):
+```bash
+docker compose exec backend python -c "from app import external; print(external.enabled())"   # Docker
+cd /home/SilkRail/backend && python -c "from app import external; print(external.enabled())"  # без Docker
+```
+Ключ никуда больше не вставлять: ни в код, ни в чат, ни в git.
 
 Скопировать файл с компьютера на сервер (PowerShell на компьютере):
 ```powershell
