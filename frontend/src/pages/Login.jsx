@@ -2,7 +2,7 @@ import { App, Button, Form, Input, Modal, Segmented, Steps } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import { RefreshCw, UserRound, KeyRound, Map, LayoutDashboard, ScanLine, Cctv, LogIn } from "lucide-react";
+import { RefreshCw, UserRound, KeyRound, Map, LayoutDashboard, Cctv, LogIn } from "lucide-react";
 import api from "../api";
 import { useAuth } from "../store/auth";
 import Logo, { LogoMark } from "../components/Logo";
@@ -90,7 +90,7 @@ function Registan() {
 /* a thin route through the app's sections, a light runs along it */
 function RouteLine() {
   const { t } = useTranslation();
-  const stops = [[Map, t("nav.map")], [LayoutDashboard, t("nav.dashboard")], [ScanLine, t("nav.analytics")], [Cctv, t("nav.cameras")]];
+  const stops = [[Map, t("nav.map")], [LayoutDashboard, t("nav.dashboard")], [Cctv, t("nav.cameras")]];
   return (
     <ol className="rv-route-line-h" aria-label={t("login.route")}>
       <i className="runner" aria-hidden="true" />
@@ -179,7 +179,6 @@ export default function Login() {
             <div style={{ textAlign: "right", marginTop: -8, marginBottom: 16 }}><a onClick={() => setForgot(true)}>{t("auth.forgot")}</a></div>
             <Button htmlType="submit" type="primary" size="large" block loading={busy} className="rv-login-btn" icon={<LogIn size={17} />} iconPlacement="end">{t("auth.login")}</Button>
           </Form>
-          <p className="rv-login-demo">{t("auth.demo")}</p>
         </div>
       </section>
       <ForgotModal open={forgot} onClose={() => setForgot(false)} />

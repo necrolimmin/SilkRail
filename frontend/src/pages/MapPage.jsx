@@ -13,7 +13,7 @@ import { BASEMAPS, ICONS, ClusterLayer, MapRefBridge, trainIcon, kmIcon, markerI
 import MapLegend from "./map/Legend";
 import uzb from "./map/uzb.json";
 import StationModal from "./station/StationModal";
-import CameraPlayer from "../components/CameraPlayer";
+import { StationCameraConsole } from "../components/CameraConsole";
 import RailTrack from "../components/RailTrack";
 import { useAuth } from "../store/auth";
 import { Input } from "antd";
@@ -196,7 +196,7 @@ export default function MapPage() {
     const compEdit = (c) => ({ kind: "company", id: c.id, name: c.name });
     if (has("companies")) data.companies.filter((c) => (c.kind === "fuel" || c.kind === "industrial") && compOk(c)).forEach((c) => items.push({ lat: c.lat, lng: c.lng, type: c.kind === "fuel" ? "fuel" : "company", icon: c.kind === "fuel" ? ICONS.fuel : ICONS.company, popup: compPopup(c), tooltip: esc(c.name), edit: compEdit(c) }));
     if (has("other")) data.companies.filter((c) => (c.kind === "depot" || c.kind === "other") && compOk(c)).forEach((c) => items.push({ lat: c.lat, lng: c.lng, type: "depot", icon: c.kind === "depot" ? ICONS.depot : ICONS.other, popup: compPopup(c), tooltip: esc(c.name), edit: compEdit(c) }));
-    if (has("cameras")) data.cameras.filter((c) => !mtuId || stationById[c.stationId]?.mtuId === mtuId).forEach((c) => items.push({ lat: c.lat, lng: c.lng, type: "camera", icon: c.online ? ICONS.camera : ICONS.cameraOff, tooltip: esc(c.name), onClick: () => setCamera(c), edit: { kind: "camera", id: c.id, name: c.name } }));
+    if (has("cameras")) data.cameras.filter((c) => !mtuId || stationById[c.stationId]?.mtuId === mtuId).forEach((c) => items.push({ lat: c.lat, lng: c.lng, type: "camera", icon: c.online ? ICONS.camera : ICONS.cameraOff, tooltip: esc(c.name), onClick: () => setCamera(c), edit: c.argusId ? undefined : { kind: "camera", id: c.id, name: c.name } }));
     if (has("crossings")) data.crossings.forEach((c) => items.push({
       lat: c.lat, lng: c.lng, type: c.isProtected ? "crossingOk" : "crossingNo", icon: c.isProtected ? ICONS.crossingOk : ICONS.crossingNo, edit: { kind: "crossing", id: c.id, name: c.name },
       popup: `<b>${esc(c.name)}</b><div style="font-size:12px;margin-top:4px">${c.km} km · ${c.isProtected ? t("map.protected") : t("map.unprotected")}</div>`,
@@ -512,8 +512,9 @@ export default function MapPage() {
         </Form>
       </Modal>
       <StationModal id={stationId} onClose={() => setStationId(null)} />
-      <Modal open={!!camera} onCancel={() => setCamera(null)} footer={null} width={760} title={camera?.name} destroyOnHidden>
-        {camera && <CameraPlayer url={camera.streamUrl} online={camera.online} name={camera.name} controls />}
+      <Modal open={!!camera} onCancel={() => setCamera(null)} footer={null} width="min(1100px, 96vw)" destroyOnHidden
+        title={camera && (stationById[camera.stationId]?.name || camera.name)}>
+        {camera && <StationCameraConsole stationId={camera.stationId} focus={camera.id} />}
       </Modal>
     </div>
   );

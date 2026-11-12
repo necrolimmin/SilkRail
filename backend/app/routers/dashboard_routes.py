@@ -145,7 +145,7 @@ def overview(db: Session = Depends(get_db)):
         "stations": db.query(func.count(m.Station.id)).scalar(),
         "activeStations": db.query(func.count(m.Station.id)).filter(m.Station.is_active).scalar(),
         "companies": db.query(func.count(m.Company.id)).scalar(),
-        "cameras": db.query(func.count(m.Camera.id)).scalar(),
+        "cameras": db.query(func.count(m.Camera.id)).scalar() + db.query(func.count(m.ArgusCamera.id)).scalar(),
         "workers": db.query(func.count(m.Worker.id)).scalar(),
         "railwayLength": round(db.query(func.sum(m.Mtu.railway_length_km)).scalar() or 0, 1),
         "todayTrains": int(db.query(func.sum(m.TrafficDaily.trains_in + m.TrafficDaily.trains_out)).filter(m.TrafficDaily.day == today).scalar() or 0),

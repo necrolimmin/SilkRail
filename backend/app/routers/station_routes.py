@@ -699,11 +699,12 @@ def computers(sid: int, db: Session = Depends(get_db)):
 
 
 @router.get("/{sid}/cameras", dependencies=[Depends(require_station_tab("cameras"))])
-def station_cameras(sid: int, db: Session = Depends(get_db)):
+def station_cameras(sid: int, lang: str | None = None, db: Session = Depends(get_db)):
     rows = db.query(m.Camera).filter(m.Camera.station_id == sid).all()
-    return [{"id": r.id, "name": r.name, "streamUrl": r.stream_url, "online": r.online, "vendor": r.vendor} for r in rows]
+    own = [{"id": r.id, "name": r.name, "streamUrl": r.stream_url, "online": r.online, "vendor": r.vendor} for r in rows]
+    # cameras attached from Argus come first: they are the station's real ones
+    from .. import argus
+    attached = db.query(m.ArgusCamera).filter(m.ArgusCamera.station_id == sid).order_by(m.ArgusCamera.id).all()
+    return argus.station_cameras(db, attached, lang) + own
 
 
-@router.get("/{sid}/scales")
-def station_scales(sid: int, db: Session = Depends(get_db)):
-    return [{"id": s.id, "code": s.code, "kind": s.kind} for s in db.query(m.Scale).filter(m.Scale.station_id == sid)]

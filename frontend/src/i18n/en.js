@@ -215,6 +215,16 @@ export default {
     norm: "Load limit", scaleTon: "Scale reading", cargo: "Cargo weight", extra: "Overload", customs: "Customs", onlyExtra: "Overloaded only",
     scale: "Scale", dynamic: "Dynamic", static: "Static", confirmed: "Confirmed", notConfirmed: "Not confirmed", photo: "Photo",
   },
+  argus: {
+    button: "Add camera", title: "Add cameras: {{station}}", editBtn: "Edit camera", editTitle: "Camera", name: "Name", nameHint: "In Argus it is called “{{name}}”. Leave the field empty to show that name.", remove: "Remove from station", removeConfirm: "Remove the camera from the station? It stays in Argus and can be added again.", renamed: "Camera saved", removed: "Camera removed from the station", setupLead: "Argus is the video surveillance system. Enter its address and the key issued in Argus under “API integration”. The key is kept on the server and never comes back to the browser.", url: "Argus address", urlRequired: "Enter the Argus address", key: "API key", keyRequired: "Paste the key", keyHint: "Starts with “argus_”. It is shown once, when it is created.", keyKeep: "Leave empty to keep the current key.", connect: "Connect", connected: "Argus connected, cameras under the key: {{count}}", connectedTo: "Connected to", change: "Change", disconnect: "Disconnect", disconnectConfirm: "Disconnect Argus? Its cameras will disappear from every station.", noCameras: "This key opens no cameras. Tick cameras for the key in Argus.", pickHint: "Ticked for this station: {{count}}. A camera sits on one station: ticking it here moves it here.", willMove: "Now on this station; will be moved here", saved: "Station cameras saved",
+    err: { argus_unreachable: "Argus does not answer at this address. Check the address and the network.", argus_bad_key: "Argus did not accept the key. Check it or create a new one in Argus.", argus_bad_answer: "Something other than Argus answers at this address.", argus_bad_url: "The address must start with http:// or https://.", argus_key_required: "Paste the key.", argus_not_connected: "Argus is not connected yet." },
+  },
+  console: { cameras: "Cameras", state: "{{online}} online, {{off}} no signal", openAll: "Open all", closeAll: "Close all",
+    openStation: "Open all", opened: "{{n}} of {{total}} open", limit: "Up to {{n}} cameras at once",
+    close: "Close", fullscreen: "Full screen", noSignal: "no signal", pickTitle: "Pick cameras from the list",
+    pickText: "Only open cameras play video, so neither the browser nor the camera server is overloaded. Your choice is remembered.",
+    noneOnline: "All cameras are without signal", noneOnlineText: "A camera can be opened as soon as it is back online.",
+    noAccess: "No access to this station's cameras" },
   cameras: { title: "Surveillance cameras", groups: "Groups", grid: "Grid", total: "Total", online: "Online", offline: "Offline", vendor: "Vendor", noStream: "Stream unavailable" },
   months: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
   opCodes: {

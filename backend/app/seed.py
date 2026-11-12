@@ -389,12 +389,11 @@ def run():
     groups = [m.CameraGroup(name=n) for n in ["Perronlar", "Yuk hovlilari", "Pereezdlar", "Tarozilar", "Depolar"]]
     db.add_all(groups)
     db.flush()
-    demo_streams = [
-        "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
-        "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8",
-    ]
+    from .main_cleanup import DEMO_STREAMS
+    demo_streams = list(DEMO_STREAMS)
     cams = []
-    for s in hubs + R.sample(st_list, k=25):
+    # demo cameras with public test videos only on request: real ones come from Argus
+    for s in (hubs + R.sample(st_list, k=25)) if os.getenv("SEED_DEMO_STAFF") == "1" else []:
         for i in range(R.randint(1, 4)):
             cams.append(dict(name=f"{s.name} — kamera {i + 1}", station_id=s.id, group_id=R.choice(groups).id,
                              lat=s.lat + R.uniform(-.01, .01), lng=s.lng + R.uniform(-.01, .01),
@@ -426,8 +425,8 @@ def run():
                             picket_start=R.randint(1, 10), picket_end=R.randint(1, 10), repair_type=R.choice(REPAIR_TYPES),
                             created_by=admin.id) for _ in range(12)])
 
-    # ---------- Scales + weighings ----------
-    scale_st = hubs[:] + R.sample([s for s in st_list if s.cargo_operations and not s.is_hub], k=10)
+    # ---------- Scales + weighings (demo only: the scales page was removed) ----------
+    scale_st = (hubs[:] + R.sample([s for s in st_list if s.cargo_operations and not s.is_hub], k=10)) if os.getenv("SEED_DEMO_STAFF") == "1" else []
     scales = [m.Scale(code=f"TRZ-{i + 1:03d}", station_id=s.id, kind=R.choice(["dynamic", "static"])) for i, s in enumerate(scale_st)]
     db.add_all(scales)
     db.flush()
@@ -527,6 +526,13 @@ def run():
     db.commit()
     if restored:
         print(f"station records restored: {restored} stations")
+
+    # the Argus connection and the cameras attached to stations (data/argus.json)
+    from . import argus
+    attached = argus.restore(db)
+    db.commit()
+    if attached:
+        print(f"argus cameras restored: {attached}")
 
     # save line geometry for the map
     feats = [{"type": "Feature",

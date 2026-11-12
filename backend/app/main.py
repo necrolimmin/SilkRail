@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect, text
 
 from .db import Base, engine
-from .routers import auth_routes, map_routes, station_routes, dashboard_routes, analytics_routes, users_routes, records_routes
+from .routers import auth_routes, map_routes, station_routes, dashboard_routes, analytics_routes, users_routes, records_routes, argus_routes
 
 Base.metadata.create_all(engine)
 # lightweight migrations for databases created before these columns existed
@@ -17,11 +17,14 @@ _NEW_COLUMNS = [
     ("stations", "country", "VARCHAR(64) DEFAULT 'O''zbekiston'"),
     ("stations", "road_name", "VARCHAR(128) DEFAULT 'O''zbekiston Temir Yo''llari (O''TY)'"),
     ("stations", "mtu_listed", "BOOLEAN DEFAULT FALSE"),
+    ("argus_cameras", "title", "VARCHAR(200)"),
 ]
 with engine.begin() as conn:
     for table, col, ddl in _NEW_COLUMNS:
         if col not in {c["name"] for c in inspect(conn).get_columns(table)}:
             conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}"))
+    from .main_cleanup import remove_demo_cameras
+    remove_demo_cameras(conn)
     # project was renamed RailVision -> SilkRail
     conn.execute(text("UPDATE stations SET leader_email = REPLACE(leader_email, '@railvision.uz', '@silkrail.uz') "
                       "WHERE leader_email LIKE '%@railvision.uz'"))
@@ -45,7 +48,7 @@ async def isolate_uploads(request, call_next):
     return resp
 
 
-for r in (auth_routes, map_routes, station_routes, dashboard_routes, analytics_routes, users_routes, records_routes):
+for r in (auth_routes, map_routes, station_routes, dashboard_routes, analytics_routes, users_routes, records_routes, argus_routes):
     app.include_router(r.router)
 app.include_router(users_routes.settings_router)
 

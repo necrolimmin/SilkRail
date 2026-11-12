@@ -3,13 +3,17 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { VideoOff } from "lucide-react";
 
-export default function CameraPlayer({ url, online = true, name, controls = false, autoPlay = true }) {
+/**
+ * One camera. `url` is an HLS stream played here; `embedUrl` is a camera of the Argus video system, which is
+ * shown by Argus's own player in a frame (it draws the camera's name and state itself, and reconnects by itself).
+ */
+export default function CameraPlayer({ url, embedUrl, online = true, name, controls = false, autoPlay = true }) {
   const ref = useRef();
   const { t } = useTranslation();
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     const v = ref.current;
-    if (!v || !url || !online) return;
+    if (embedUrl || !v || !url || !online) return;
     setFailed(false);
     let hls;
     if (v.canPlayType("application/vnd.apple.mpegurl")) {
@@ -21,7 +25,15 @@ export default function CameraPlayer({ url, online = true, name, controls = fals
       hls.on(Hls.Events.ERROR, (_, d) => { if (d.fatal) setFailed(true); });
     } else setFailed(true);
     return () => hls?.destroy();
-  }, [url, online]);
+  }, [url, embedUrl, online]);
+
+  if (embedUrl && online) {
+    return (
+      <div className="rv-cam">
+        <iframe src={embedUrl} title={name} allow="autoplay; fullscreen" allowFullScreen loading="lazy" referrerPolicy="no-referrer" />
+      </div>
+    );
+  }
 
   return (
     <div className="rv-cam">

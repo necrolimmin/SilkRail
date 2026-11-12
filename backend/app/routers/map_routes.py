@@ -80,8 +80,35 @@ def companies(kind: str | None = None, db: Session = Depends(get_db)):
 
 @router.get("/cameras")
 def cameras(db: Session = Depends(get_db)):
-    return [{"id": c.id, "name": c.name, "lat": c.lat, "lng": c.lng, "online": c.online, "stationId": c.station_id,
-             "streamUrl": c.stream_url} for c in db.query(m.Camera).all()]
+    own = [{"id": c.id, "name": c.name, "lat": c.lat, "lng": c.lng, "online": c.online, "stationId": c.station_id,
+            "streamUrl": c.stream_url} for c in db.query(m.Camera).all()]
+    return own + _argus_markers(db)
+
+
+def _argus_markers(db: Session) -> list[dict]:
+    """Argus cameras have no coordinates of their own: they are put in a small ring around their station."""
+    from .. import argus
+    rows = db.query(m.ArgusCamera, m.Station).join(m.Station, m.Station.id == m.ArgusCamera.station_id)\
+        .order_by(m.ArgusCamera.station_id, m.ArgusCamera.id).all()
+    if not rows:
+        return []
+    try:
+        live = {c["id"]: c for c in argus.cameras(db)} if argus.connection(db) else {}
+    except argus.ArgusError:
+        live = {}
+    per_station: dict[int, int] = {}
+    for cam, _ in rows:
+        per_station[cam.station_id] = per_station.get(cam.station_id, 0) + 1
+    out, seen = [], {}
+    for cam, s in rows:
+        i = seen.get(s.id, 0)
+        seen[s.id] = i + 1
+        a = 2 * math.pi * i / per_station[s.id] + math.pi / 4
+        info = live.get(cam.argus_id)
+        out.append({"id": f"argus-{cam.id}", "argusId": cam.id, "name": cam.title or (info or {}).get("name") or cam.name,
+                    "lat": s.lat + .0012 * math.sin(a), "lng": s.lng + .0016 * math.cos(a),
+                    "online": bool(info and info["online"]), "stationId": s.id, "streamUrl": ""})
+    return out
 
 
 @router.get("/crossings")
@@ -318,15 +345,16 @@ def delete_station(sid: int, db: Session = Depends(get_db)):
     _save_custom(remove_name=s.name)
     esr = s.esr_code
     for model in (m.Worker, m.KpiRecord, m.IndicatorValue, m.TrafficDaily, m.TrainPass, m.EmmRoute, m.KmoItem, m.FinanceDaily,
-                  m.YearMetric, m.FuelOperation, m.AccessRoad, m.Computer, m.Camera, m.Crossing, m.ParkTrack, m.Cadastre,
+                  m.YearMetric, m.FuelOperation, m.AccessRoad, m.Computer, m.Camera, m.ArgusCamera, m.Crossing, m.ParkTrack, m.Cadastre,
                   m.WagonWeighing, m.Scale, m.Company, m.StationMedia):
         db.query(model).filter(model.station_id == sid).delete(synchronize_session=False)
     db.delete(s)
     db.commit()
     # uploaded files (photos, 360°, tours, PDFs) live in one folder per station — remove it with the station
     shutil.rmtree(os.path.join("static", "uploads", "stations", str(sid)), ignore_errors=True)
-    from .. import records
+    from .. import argus, records
     records.remove_station(esr)
+    argus.save_mirror(db)
 
     def forget(e):
         for key in ("media", "stationInfo"):

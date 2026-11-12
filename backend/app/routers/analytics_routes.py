@@ -31,68 +31,10 @@ def _ww_filter(q, start, end, station, scale, customs, only_extra):
     return q, s, e
 
 
-@router.get("/scales", dependencies=[Depends(require_page("analytics"))])
-def scales(db: Session = Depends(get_db)):
-    rows = db.query(m.Scale, m.Station.name).join(m.Station, m.Station.id == m.Scale.station_id).all()
-    return [{"id": s.id, "code": s.code, "kind": s.kind, "stationId": s.station_id, "station": n} for s, n in rows]
-
-
-@router.get("/analytics/scale/summary", dependencies=[Depends(require_page("analytics"))])
-def scale_summary(start: str | None = None, end: str | None = None, station: int | None = None, scale: int | None = None,
-                  customs: str | None = None, mode: str = "days", db: Session = Depends(get_db)):
-    q, s, e = _ww_filter(db.query(m.WagonWeighing), start, end, station, scale, customs, False)
-    W = m.WagonWeighing
-    tot = q.with_entities(func.count(W.id), func.sum(W.cargo_ton), func.sum(case((W.extra_ton > 0, 1), else_=0)),
-                          func.sum(W.extra_ton), func.sum(case((W.confirmed, 1), else_=0))).one()
-    b = bucket_expr(mode, W.weighed_at)
-    series = q.with_entities(b, func.count(W.id), func.sum(case((W.extra_ton > 0, 1), else_=0)), func.sum(W.cargo_ton))\
-        .group_by(b).order_by(b).all()
-    by_station = q.join(m.Station, m.Station.id == W.station_id).with_entities(
-        m.Station.name, func.count(W.id), func.sum(case((W.extra_ton > 0, 1), else_=0))).group_by(m.Station.name)\
-        .order_by(func.count(W.id).desc()).limit(12).all()
-    n = tot[0] or 0
-    return {"start": s.isoformat(), "end": e.isoformat(),
-            "totals": {"vagons": n, "weight": round(tot[1] or 0, 1), "extraVagons": int(tot[2] or 0),
-                       "extraWeight": round(tot[3] or 0, 1), "confirmed": int(tot[4] or 0),
-                       "confirmedPct": round((tot[4] or 0) / n * 100, 1) if n else 0,
-                       "extraPct": round((tot[2] or 0) / n * 100, 1) if n else 0},
-            "series": [{"period": r[0], "vagons": r[1], "extra": int(r[2] or 0), "weight": round(r[3] or 0, 1)} for r in series],
-            "stations": [{"station": r[0], "vagons": r[1], "extra": int(r[2] or 0)} for r in by_station]}
-
-
-@router.get("/analytics/scale/interval", dependencies=[Depends(require_page("analytics"))])
-def scale_interval(date_: str | None = Query(None, alias="date"), station: int | None = None, db: Session = Depends(get_db)):
-    """Hourly distribution for a single day."""
-    d = date_ or date.today().isoformat()
-    q, _, _ = _ww_filter(db.query(m.WagonWeighing), d, d, station, None, None, False)
-    W = m.WagonWeighing
-    rows = q.with_entities(W.weighed_at, W.extra_ton).all()
-    hours = [{"hour": h, "vagons": 0, "extra": 0} for h in range(24)]
-    for at, ex in rows:
-        hours[at.hour]["vagons"] += 1
-        hours[at.hour]["extra"] += ex > 0
-    return hours
-
-
-@router.get("/analytics/scale/weighings", dependencies=[Depends(require_page("analytics"))])
-def weighings(start: str | None = None, end: str | None = None, station: int | None = None, scale: int | None = None,
-              customs: str | None = None, onlyExtra: bool = False, q: str | None = None, page: int = 1, size: int = 10,
-              db: Session = Depends(get_db)):
-    base, _, _ = _ww_filter(db.query(m.WagonWeighing, m.Station.name).join(m.Station, m.Station.id == m.WagonWeighing.station_id),
-                            start, end, station, scale, customs, onlyExtra)
-    if q:
-        base = base.filter(m.WagonWeighing.wagon_number.like(f"%{re.sub(r'[^0-9]', '', q)}%"))
-    total = base.count()
-    rows = base.order_by(m.WagonWeighing.weighed_at.desc()).offset((page - 1) * size).limit(size).all()
-    return {"total": total, "items": [
-        {"id": w.id, "wagonNumber": w.wagon_number, "station": n, "weighedAt": w.weighed_at.isoformat(), "normTon": w.norm_ton,
-         "scaleTon": w.scale_ton, "cargoTon": w.cargo_ton, "extraTon": w.extra_ton, "customs": w.customs,
-         "detected": w.detected, "confirmed": w.confirmed} for w, n in rows]}
-
-
 # ---------------- Cameras ----------------
 @router.get("/cameras", dependencies=[Depends(require_page("cameras"))])
-def cameras(group: int | None = None, station: int | None = None, q: str | None = None, db: Session = Depends(get_db)):
+def cameras(group: int | None = None, station: int | None = None, q: str | None = None, lang: str | None = None,
+            db: Session = Depends(get_db)):
     base = db.query(m.Camera, m.Station.name).join(m.Station, m.Station.id == m.Camera.station_id)
     if group:
         base = base.filter(m.Camera.group_id == group)
@@ -101,8 +43,24 @@ def cameras(group: int | None = None, station: int | None = None, q: str | None 
     if q:
         base = base.filter(m.Camera.name.ilike(f"%{q}%"))
     rows = base.all()
-    return [{"id": c.id, "name": c.name, "station": n, "stationId": c.station_id, "groupId": c.group_id,
-             "online": c.online, "vendor": c.vendor, "streamUrl": c.stream_url, "lat": c.lat, "lng": c.lng} for c, n in rows]
+    own = [{"id": c.id, "name": c.name, "station": n, "stationId": c.station_id, "groupId": c.group_id,
+            "online": c.online, "vendor": c.vendor, "streamUrl": c.stream_url, "lat": c.lat, "lng": c.lng} for c, n in rows]
+    return _argus_cameras(db, group, station, q, lang) + own
+
+
+def _argus_cameras(db: Session, group: int | None = None, station: int | None = None, q: str | None = None,
+                   lang: str | None = None) -> list[dict]:
+    """Cameras attached from Argus; they belong to no group, so a group filter leaves them out."""
+    if group:
+        return []
+    from .. import argus
+    aq = db.query(m.ArgusCamera)
+    if station:
+        aq = aq.filter(m.ArgusCamera.station_id == station)
+    names = dict(db.query(m.Station.id, m.Station.name).all())
+    out = [{**c, "station": names.get(c["stationId"], ""), "groupId": None, "lat": None, "lng": None}
+           for c in argus.station_cameras(db, aq.order_by(m.ArgusCamera.id).all(), lang)]
+    return [c for c in out if q.lower() in c["name"].lower()] if q else out
 
 
 @router.get("/cameras/groups", dependencies=[Depends(require_page("cameras"))])
@@ -115,6 +73,9 @@ def camera_groups(db: Session = Depends(get_db)):
 def camera_status(db: Session = Depends(get_db)):
     total = db.query(func.count(m.Camera.id)).scalar()
     online = db.query(func.count(m.Camera.id)).filter(m.Camera.online).scalar()
+    from_argus = _argus_cameras(db)
+    total += len(from_argus)
+    online += sum(c["online"] for c in from_argus)
     return {"total": total, "online": online, "offline": total - online}
 
 

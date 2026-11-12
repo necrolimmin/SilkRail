@@ -6,7 +6,8 @@ import * as THREE from "three";
 import { PackagePlus, PackageMinus, Coins, Siren, Monitor, Wifi, WifiOff, Maximize } from "lucide-react";
 import { PanoGallery } from "./StationMedia";
 import { Chart, Loader, NoData, StatCard, useFetch } from "../../components/ui";
-import CameraPlayer from "../../components/CameraPlayer";
+import CameraConsole from "../../components/CameraConsole";
+import { ArgusCameraEdit, ArgusCamerasButton } from "./ArgusCameras";
 import { fmt, money, date } from "../../utils";
 
 function useRange() {
@@ -127,14 +128,26 @@ export function ComputersTab({ st }) {
   );
 }
 
+// Argus's player speaks the same languages; Uzbek is Latin here
+const ARGUS_LANG = { uz: "uz-Latn", ru: "ru", en: "en" };
+
 export function CamerasTab({ st }) {
-  const { t } = useTranslation();
-  const { data, loading } = useFetch(`/api/stations/${st.id}/cameras`);
+  const { t, i18n } = useTranslation();
+  const [version, setVersion] = useState(0); // bumped when an admin changes the station's Argus cameras
+  const { data, loading } = useFetch(`/api/stations/${st.id}/cameras`, { lang: ARGUS_LANG[i18n.language] || "ru" }, [version]);
+  const bump = () => setVersion((v) => v + 1);
+  const addButton = <ArgusCamerasButton st={st} onChange={bump} />;
   return (
     <Loader loading={loading}>
       {data?.length ? (
-        <div className="rv-cam-grid">{data.map((c) => <CameraPlayer key={c.id} url={c.streamUrl} online={c.online} name={c.name} controls />)}</div>
-      ) : <div className="rv-card" style={{ textAlign: "center", padding: 40 }}><NoData /><div className="rv-muted">{t("station.noCamera")}</div></div>}
+        <CameraConsole cameras={data} storageKey={`rv_cams_st_${st.id}`} defaultOpen={1} headerExtra={addButton}
+          tools={(c) => c.argusId && <ArgusCameraEdit cam={c} onChange={bump} />} />
+      ) : (
+        <>
+          <div className="rv-cam-tools">{addButton}</div>
+          <div className="rv-card" style={{ textAlign: "center", padding: 40 }}><NoData /><div className="rv-muted">{t("station.noCamera")}</div></div>
+        </>
+      )}
     </Loader>
   );
 }

@@ -73,7 +73,7 @@ def require_roles(*roles: str):
     return dep
 
 
-PAGES = ["map", "dashboard", "analytics", "cameras"]
+PAGES = ["map", "dashboard", "cameras"]
 ADMIN_ROLES = ("superadmin", "admin")
 
 

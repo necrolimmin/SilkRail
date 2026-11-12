@@ -12,12 +12,12 @@ cd backend
 pip install -r requirements.txt
 python -m app.osm_import           # скачивает реальные ж/д пути и станции из OpenStreetMap (~30–60 сек, нужен интернет)
 python -m app.seed                 # создаёт БД; станции/переезды/предупреждения ставятся точно на пути
-uvicorn app.main:app --port 8000
+uvicorn app.main:app --port 8010 --reload
 
 # 2. Фронтенд (в другом терминале)
 cd frontend
 npm install
-npm run dev                        # http://localhost:5173 (проксирует /api на :8000)
+npm run dev                        # http://localhost:5173 (проксирует /api на :8010)
 ```
 
 Вход: **admin / Admin123** (superadmin) или **viewer / Viewer123**.
@@ -58,9 +58,26 @@ SECRET_KEY=... docker compose up --build   # http://localhost:8080
 
 Все данные синтетические (`backend/app/seed.py`), координаты узловых станций приблизительные. Чтобы подключить реальные источники, замените сид или добавьте импорт в те же таблицы (`backend/app/models.py`). Потоки камер в сиде — публичные тестовые HLS; замените `stream_url` на свои.
 
+## Камеры из Argus
+
+Настоящие камеры станций берутся из системы видеонаблюдения Argus (отдельный сервер).
+
+1. В Argus: раздел «Интеграция API» → «Создать ключ», отметить камеры, скопировать ключ (он показывается один раз).
+2. Здесь: карточка станции → вкладка «Камеры» → «Камеры из Argus» (только admin/superadmin). В первый раз вводятся адрес Argus и ключ, дальше для каждой станции отмечаются её камеры. Камера стоит на одной станции: отметив её у другой, вы её переносите.
+3. Камеры появляются на вкладке станции и на странице «Камеры» (в группы они не входят).
+
+Как это устроено:
+
+- Ключ хранится на сервере (таблица `settings`) и в браузер не возвращается. Браузер получает временную ссылку на плеер Argus (`/embed/…?t=…`, действует сутки, сервер обновляет её заранее) и показывает его во фрейме.
+- Адрес Argus должен открываться и с этого сервера, и из браузеров пользователей. Если сайт работает по https, Argus тоже должен быть по https, иначе браузер не покажет фрейм.
+- Подключение и привязки дублируются в `data/argus.json` и возвращаются после `seed`. В этом файле лежит ключ: не выкладывайте его.
+- Если Argus недоступен или камеру убрали из ключа, она остаётся в списке станции как «Офлайн».
+
+Код: `backend/app/argus.py`, `backend/app/routers/argus_routes.py`, `frontend/src/pages/station/ArgusCameras.jsx`.
+
 ## Структура API (основное)
 
 `/api/auth/*`, `/api/user/*`, `/api/map/{mtus,stations,companies,cameras,crossings,warnings,lines,km-marks,trains,search,works}`,
 `/api/stations/{id}/{workers,tech,cadastre,kpi,indicators,traffic,train-passes,emm,kmo,income,finance,access-roads,computers,cameras}`,
 `/api/dashboard/{overview,fuel,fuel-cargo,indicators,income-expense,finance}`, `/api/analytics/scale/*`, `/api/cameras*`, `/api/assistant/ask`.
-Документация Swagger: http://localhost:8000/docs
+Документация Swagger: http://localhost:8010/docs (на сервере в Docker бэкенд работает на 8000)

@@ -215,6 +215,16 @@ export default {
     norm: "Yuk ko'tarish normasi", scaleTon: "Tarozi ko'rsatkichi", cargo: "Yuk og'irligi", extra: "Ortiqcha", customs: "Bojxona", onlyExtra: "Faqat ortiqcha yuklanganlar",
     scale: "Tarozi", dynamic: "Dinamik", static: "Statik", confirmed: "Tasdiqlangan", notConfirmed: "Tasdiqlanmagan", photo: "Surat",
   },
+  argus: {
+    button: "Kamera qo'shish", title: "Kamera qo'shish: {{station}}", editBtn: "Kamerani tahrirlash", editTitle: "Kamera", name: "Nomi", nameHint: "Argusda u «{{name}}» deb nomlangan. Shu nomni ko'rsatish uchun maydonni bo'sh qoldiring.", remove: "Stansiyadan olib tashlash", removeConfirm: "Kamera stansiyadan olib tashlansinmi? Argusda u qoladi, uni yana qo'shish mumkin.", renamed: "Kamera saqlandi", removed: "Kamera stansiyadan olib tashlandi", setupLead: "Argus — videokuzatuv tizimi. Uning manzilini va Argusning «API integratsiya» bo'limida berilgan kalitni kiriting. Kalit serverda saqlanadi va brauzerga qaytarilmaydi.", url: "Argus manzili", urlRequired: "Argus manzilini kiriting", key: "API kaliti", keyRequired: "Kalitni kiriting", keyHint: "«argus_» bilan boshlanadi. U faqat bir marta, yaratilganda ko'rsatiladi.", keyKeep: "Avvalgi kalitni saqlash uchun bo'sh qoldiring.", connect: "Ulash", connected: "Argus ulandi, kalit bo'yicha kameralar: {{count}}", connectedTo: "Ulangan:", change: "O'zgartirish", disconnect: "Uzish", disconnectConfirm: "Argus uzilsinmi? Uning kameralari barcha stansiyalardan olib tashlanadi.", noCameras: "Bu kalit bo'yicha birorta kamera yo'q. Argusda kalit uchun kameralarni belgilang.", pickHint: "Bu stansiya uchun belgilangan: {{count}}. Kamera bitta stansiyada turadi: bu yerda belgilasangiz, shu yerga ko'chadi.", willMove: "Hozir shu stansiyada; bu yerga ko'chiriladi", saved: "Stansiya kameralari saqlandi",
+    err: { argus_unreachable: "Argus bu manzilda javob bermayapti. Manzil va tarmoqni tekshiring.", argus_bad_key: "Argus kalitni qabul qilmadi. Kalitni tekshiring yoki Argusda yangisini yarating.", argus_bad_answer: "Bu manzilda Argus emas, boshqa narsa javob beryapti.", argus_bad_url: "Manzil http:// yoki https:// bilan boshlanishi kerak.", argus_key_required: "Kalitni kiriting.", argus_not_connected: "Argus hali ulanmagan." },
+  },
+  console: { cameras: "Kameralar", state: "{{online}} ta tarmoqda, {{off}} ta signalsiz", openAll: "Hammasini ochish", closeAll: "Hammasini yopish",
+    openStation: "Hammasini ochish", opened: "{{total}} tadan {{n}} tasi ochiq", limit: "Bir vaqtda {{n}} tadan ko'p emas",
+    close: "Yopish", fullscreen: "To'liq ekran", noSignal: "signal yo'q", pickTitle: "Ro'yxatdan kameralarni tanlang",
+    pickText: "Video faqat ochilgan kameralarda ishlaydi — brauzer ham, kamera serveri ham ortiqcha yuklanmaydi. Tanlov eslab qolinadi.",
+    noneOnline: "Barcha kameralar signalsiz", noneOnlineText: "Kamera qayta ulanishi bilan uni ochish mumkin bo'ladi.",
+    noAccess: "Bu stansiya kameralariga ruxsat yo'q" },
   cameras: { title: "Kuzatuv kameralari", groups: "Guruhlar", grid: "Tarmoq", total: "Jami", online: "Onlayn", offline: "Oflayn", vendor: "Ishlab chiqaruvchi", noStream: "Oqim mavjud emas" },
   months: ["Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun", "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr"],
   opCodes: {

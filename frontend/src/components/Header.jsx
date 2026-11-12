@@ -3,7 +3,7 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import dayjs from "dayjs";
-import { Map, LayoutDashboard, ScanLine, Cctv, UserRound, Mail, Lock, SunMoon, Languages, LogOut, Check, UsersRound, ChevronRight, ToggleRight } from "lucide-react";
+import { Map, LayoutDashboard, Cctv, UserRound, Mail, Lock, SunMoon, Languages, LogOut, Check, UsersRound, ChevronRight, ToggleRight } from "lucide-react";
 import { LogoMark } from "./Logo";
 import PaletteRoute from "./PaletteRoute";
 import SectionsModal from "./SectionsModal";
@@ -71,7 +71,6 @@ export default function Header() {
   const links = [
     ["/", Map, t("nav.map"), "map"],
     ["/dashboard", LayoutDashboard, t("nav.dashboard"), "dashboard"],
-    ["/analytics", ScanLine, t("nav.analytics"), "analytics"],
     ["/cameras", Cctv, t("nav.cameras"), "cameras"],
     ...(isAdmin(user) ? [["/users", UsersRound, t("users.title")]] : []),
   ].filter(([, , , page]) => !page || canSee(user, page));

@@ -15,7 +15,6 @@ import Login from "./pages/Login";
 
 const MapPage = lazy(() => import("./pages/MapPage"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Analytics = lazy(() => import("./pages/Analytics"));
 const Cameras = lazy(() => import("./pages/Cameras"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Users = lazy(() => import("./pages/Users"));
@@ -58,7 +57,6 @@ function Themed() {
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<Protected page="map"><MapPage /></Protected>} />
             <Route path="/dashboard" element={<Protected page="dashboard"><Dashboard /></Protected>} />
-            <Route path="/analytics" element={<Protected page="analytics"><Analytics /></Protected>} />
             <Route path="/cameras" element={<Protected page="cameras"><Cameras /></Protected>} />
             <Route path="/profile" element={<Protected><Profile /></Protected>} />
             <Route path="/users" element={<Protected admin><Users /></Protected>} />

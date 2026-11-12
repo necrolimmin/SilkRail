@@ -332,6 +332,16 @@ class Camera(Base):
     vendor: Mapped[str] = mapped_column(String(32))
 
 
+class ArgusCamera(Base):
+    """A camera of the Argus video system attached to a station. Video comes through Argus (see app/argus.py)."""
+    __tablename__ = "argus_cameras"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    station_id: Mapped[int] = mapped_column(ForeignKey("stations.id"), index=True)
+    argus_id: Mapped[str] = mapped_column(String(64), unique=True)
+    name: Mapped[str] = mapped_column(String(200), default="")  # as it is called in Argus
+    title: Mapped[str | None] = mapped_column(String(200), nullable=True)  # the name given here; None = Argus's name
+
+
 class Crossing(Base):
     __tablename__ = "crossings"
     id: Mapped[int] = mapped_column(primary_key=True)

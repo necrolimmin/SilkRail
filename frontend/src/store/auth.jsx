@@ -63,7 +63,7 @@ export function AuthProvider({ children }) {
 export const useAuth = () => useContext(Ctx);
 
 /** Pages an admin can grant per user (keys match backend auth.PAGES). */
-export const PAGE_PATHS = { map: "/", dashboard: "/dashboard", analytics: "/analytics", cameras: "/cameras" };
+export const PAGE_PATHS = { map: "/", dashboard: "/dashboard", cameras: "/cameras" };
 export const isAdmin = (user) => ["superadmin", "admin"].includes(user?.role);
 export const canSee = (user, page) => !user?.pages || user.pages.includes(page);
 export const homePath = (user) => PAGE_PATHS[Object.keys(PAGE_PATHS).find((p) => canSee(user, p))] || "/profile";
