@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..auth import (ADMIN_ROLES, PAGES, STATION_TABS, current_user, hash_password, hidden_station_tabs, require_roles,
-                    set_hidden_station_tabs, user_base_tabs, user_pages)
+                    set_hidden_station_tabs, set_station_layout, station_layout, user_base_tabs, user_pages)
 from ..db import get_db
 from ..models import LoginHistory, MapMarker, Message, StationMedia, TrackWork, User
 from .auth_routes import PW_RE
@@ -139,14 +139,17 @@ settings_router = APIRouter(prefix="/api/admin/station-tabs", tags=["settings"],
 
 
 class HiddenTabsIn(BaseModel):
-    hidden: list[str]
+    hidden: list[str] | None = None
+    layout: list[dict] | None = None  # [{id, color, title, tabs}], see auth.clean_layout
 
 
 @settings_router.get("")
 def get_station_tabs():
-    return {"tabs": STATION_TABS, "hidden": hidden_station_tabs()}
+    return {"tabs": STATION_TABS, "hidden": hidden_station_tabs(), "layout": station_layout()}
 
 
 @settings_router.put("")
 def put_station_tabs(body: HiddenTabsIn, db: Session = Depends(get_db)):
-    return {"tabs": STATION_TABS, "hidden": set_hidden_station_tabs(db, body.hidden)}
+    hidden = set_hidden_station_tabs(db, body.hidden) if body.hidden is not None else hidden_station_tabs()
+    layout = set_station_layout(db, body.layout) if body.layout is not None else station_layout()
+    return {"tabs": STATION_TABS, "hidden": hidden, "layout": layout}

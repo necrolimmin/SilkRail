@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from ..auth import (check_captcha, create_tokens, current_user, decode, hash_password, hidden_station_tabs, new_captcha,
+from ..auth import (check_captcha, create_tokens, current_user, decode, hash_password, hidden_station_tabs, new_captcha, station_layout,
                     user_pages, user_station_tabs, verify_password)
 from ..db import get_db
 from ..models import LoginHistory, Message, User
@@ -28,7 +28,8 @@ class RefreshIn(BaseModel):
 
 def user_out(u: User) -> dict:
     return {"id": u.id, "username": u.username, "fullName": u.full_name, "role": u.role, "theme": u.theme, "lang": u.lang,
-            "pages": user_pages(u), "stationTabs": user_station_tabs(u), "hiddenStationTabs": hidden_station_tabs()}
+            "pages": user_pages(u), "stationTabs": user_station_tabs(u), "hiddenStationTabs": hidden_station_tabs(),
+            "stationLayout": station_layout()}
 
 
 def _ua_parts(ua: str) -> tuple[str, str]:

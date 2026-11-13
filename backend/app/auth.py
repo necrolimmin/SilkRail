@@ -1,5 +1,7 @@
+import json
 import os
 import random
+import re
 import secrets
 import string
 import time
@@ -126,7 +128,112 @@ def set_hidden_station_tabs(db: Session, tabs: list[str]) -> list[str]:
     db.add(row)
     db.commit()
     _hidden_cache = (0.0, [])
+    _mirror_setting(HIDDEN_TABS_KEY, clean)
     return clean
+
+
+# ---- the station card's layout: tabs in coloured groups, in the order admins set for everyone ----
+DEFAULT_LAYOUT = [
+    {"id": "about", "color": "#0d9488", "title": None, "tabs": ["home", "pano", "cameras"]},
+    {"id": "infra", "color": "#6366f1", "title": None, "tabs": ["tech", "cadastre", "roads"]},
+    {"id": "team", "color": "#0ea5e9", "title": None, "tabs": ["staff", "computers"]},
+    {"id": "ops", "color": "#d97706", "title": None, "tabs": ["traffic", "indicators", "finance"]},
+    {"id": "wip", "color": "#64748b", "title": None, "tabs": ["kpi", "emm", "kmo", "income"]},
+]
+LAYOUT_KEY = "station_layout"
+_layout_cache: tuple[float, list[dict]] = (0.0, [])
+_HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+_ID = re.compile(r"^[a-z0-9_-]{1,24}$")
+
+
+def clean_layout(groups) -> list[dict]:
+    """Every tab exactly once, groups without tabs dropped; tabs nobody placed go to the last group."""
+    out, seen, ids = [], set(), set()
+    for g in (groups if isinstance(groups, list) else [])[:12]:
+        if not isinstance(g, dict):
+            continue
+        tabs = []
+        for t in g.get("tabs") or []:
+            if isinstance(t, str) and t in STATION_TABS and t not in seen:
+                tabs.append(t)
+                seen.add(t)
+        if not tabs:
+            continue
+        gid = str(g.get("id") or "")
+        if not _ID.match(gid) or gid in ids:
+            gid = f"g{len(out) + 1}"
+            while gid in ids:
+                gid += "x"
+        ids.add(gid)
+        color = g.get("color") if isinstance(g.get("color"), str) and _HEX.match(g["color"]) else "#64748b"
+        title = str(g.get("title") or "").strip()[:32] or None
+        out.append({"id": gid, "color": color, "title": title, "tabs": tabs})
+    if not out:
+        return json.loads(json.dumps(DEFAULT_LAYOUT))
+    order = [t for g in DEFAULT_LAYOUT for t in g["tabs"]]
+    out[-1]["tabs"] += [t for t in order if t not in seen]
+    return out
+
+
+def station_layout() -> list[dict]:
+    global _layout_cache
+    if _layout_cache[0] > time.time():
+        return _layout_cache[1]
+    from .db import SessionLocal
+    from .models import Setting
+    with SessionLocal() as db:
+        row = db.get(Setting, LAYOUT_KEY)
+    layout = clean_layout(row.value if row and isinstance(row.value, list) else DEFAULT_LAYOUT)
+    _layout_cache = (time.time() + 5, layout)
+    return layout
+
+
+def set_station_layout(db: Session, groups) -> list[dict]:
+    global _layout_cache
+    from .models import Setting
+    clean = clean_layout(groups)
+    row = db.get(Setting, LAYOUT_KEY) or Setting(key=LAYOUT_KEY)
+    row.value = clean
+    db.add(row)
+    db.commit()
+    _layout_cache = (0.0, [])
+    _mirror_setting(LAYOUT_KEY, clean)
+    return clean
+
+
+# admin settings are mirrored to data/settings.json so that `python -m app.seed` (which drops all tables) keeps them
+SETTINGS_FILE = os.path.join(os.getenv("DATA_DIR", "data"), "settings.json")
+
+
+def _mirror_setting(key: str, value):
+    try:
+        with open(SETTINGS_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        data = {}
+    data[key] = value
+    try:
+        os.makedirs(os.path.dirname(SETTINGS_FILE) or ".", exist_ok=True)
+        with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=1)
+    except OSError:
+        pass
+
+
+def restore_settings(db: Session) -> int:
+    """Used by the seed: puts the mirrored admin settings back."""
+    from .models import Setting
+    try:
+        with open(SETTINGS_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return 0
+    n = 0
+    for key in (HIDDEN_TABS_KEY, LAYOUT_KEY):
+        if key in data:
+            db.merge(Setting(key=key, value=data[key]))
+            n += 1
+    return n
 
 
 def user_base_tabs(user: User) -> list[str]:

@@ -1,14 +1,11 @@
 import { Modal, Spin } from "antd";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  TrainFront, Rotate3d, Cctv, TrainTrack, LandPlot, Split, UsersRound, MonitorCheck, ArrowRightLeft, Gauge, Coins,
-  Target, Route, ClipboardCheck, Wallet, X,
-} from "lucide-react";
+import { X } from "lucide-react";
 import { get } from "../../api";
 import { useAuth, isAdmin } from "../../store/auth";
 import UnderConstruction from "./UnderConstruction";
-import { WIP_TABS } from "./tabKeys";
+import { WIP_TABS, TAB_ICONS, stationLayout, groupTitle } from "./tabKeys";
 import { HomeTab, KpiTab } from "./tabsA";
 import { CadastreTab } from "./tabCadastre";
 import { StaffTab, TechTab, RoadsTab } from "./tabsRecords";
@@ -16,15 +13,11 @@ import { TrafficTab, EmmTab, KmoTab } from "./tabsB";
 import { IndicatorsTab, FinanceTab } from "./tabsLive";
 import { IncomeTab, ComputersTab, CamerasTab, PanoTab } from "./tabsC";
 
-// Tabs grouped into coloured "carriages": [group, colour, [[key, icon, component], ...]] — order here is the order on screen
-const GROUPS = [
-  ["about", "#0d9488", [["home", TrainFront, HomeTab], ["pano", Rotate3d, PanoTab], ["cameras", Cctv, CamerasTab]]],
-  ["infra", "#6366f1", [["tech", TrainTrack, TechTab], ["cadastre", LandPlot, CadastreTab], ["roads", Split, RoadsTab]]],
-  ["team", "#0ea5e9", [["staff", UsersRound, StaffTab], ["computers", MonitorCheck, ComputersTab]]],
-  ["ops", "#d97706", [["traffic", ArrowRightLeft, TrafficTab], ["indicators", Gauge, IndicatorsTab], ["finance", Coins, FinanceTab]]],
-  ["wip", "#64748b", [["kpi", Target, KpiTab], ["emm", Route, EmmTab], ["kmo", ClipboardCheck, KmoTab], ["income", Wallet, IncomeTab]]],
-];
-const TABS = GROUPS.flatMap(([, , tabs]) => tabs);
+const VIEWS = {
+  home: HomeTab, pano: PanoTab, cameras: CamerasTab, tech: TechTab, cadastre: CadastreTab, roads: RoadsTab, staff: StaffTab,
+  computers: ComputersTab, traffic: TrafficTab, indicators: IndicatorsTab, finance: FinanceTab, kpi: KpiTab, emm: EmmTab,
+  kmo: KmoTab, income: IncomeTab,
+};
 // sections still in development: hidden from regular users, admins see a "work in progress" screen
 const WIP = WIP_TABS;
 
@@ -32,9 +25,11 @@ export default function StationModal({ id, onClose }) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const admin = isAdmin(user);
+  // groups ("carriages") of tabs in the order admins set for everyone: [id, colour, title, [[key, icon, view], ...]]
+  const GROUPS = stationLayout(user).map((g) => [g.id, g.color, groupTitle(t, g), g.tabs.filter((k) => VIEWS[k]).map((k) => [k, TAB_ICONS[k], VIEWS[k]])]);
   // admins see everything; others see what the server allows (user.stationTabs already accounts for the sections
   // switched off for everyone and for this user's explicit exceptions)
-  const tabs = TABS.filter(([k]) => admin || !user?.stationTabs || user.stationTabs.includes(k));
+  const tabs = GROUPS.flatMap(([, , , list]) => list).filter(([k]) => admin || !user?.stationTabs || user.stationTabs.includes(k));
   const off = new Set(user?.hiddenStationTabs || []); // switched off for regular users
   const first = tabs[0]?.[0];
   const [tab, setTab] = useState(first);
@@ -55,11 +50,11 @@ export default function StationModal({ id, onClose }) {
           <div className="rv-muted" style={{ fontSize: 11.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{st?.mtu?.name}</div>
         </div>
         <div className="rv-st-tabs" role="tablist">
-          {GROUPS.map(([g, color, list]) => {
+          {GROUPS.map(([g, color, title, list]) => {
             const mine = list.filter(([k]) => tabs.some((x) => x[0] === k));
             if (!mine.length) return null;
             return (
-              <div key={g} className={`rv-st-group ${mine.every(([k]) => off.has(k)) ? "wip" : ""}`} style={{ "--g": color }} title={t(`station.groups.${g}`)}>
+              <div key={g} className={`rv-st-group ${mine.every(([k]) => off.has(k)) ? "wip" : ""}`} style={{ "--g": color }} title={title}>
                 {mine.map(([k, Icon]) => (
                   <button key={k} role="tab" aria-selected={tab === k} className={`rv-st-t ${tab === k ? "active" : ""} ${off.has(k) ? "off" : ""}`} onClick={() => setTab(k)}
                     title={off.has(k) ? `${t(`station.tabs.${k}`)} · ${t("sections.adminsOnly")}` : t(`station.tabs.${k}`)}>

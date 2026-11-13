@@ -520,6 +520,11 @@ def run():
     db.commit()
     print(f"MTU registry: {sum(1 for r in changed if r['action'] != 'same')} stations updated")
 
+    # admin settings: hidden station sections and the station card's layout (data/settings.json)
+    from .auth import restore_settings
+    restore_settings(db)
+    db.commit()
+
     # staff and park tracks entered by admins (data/station_records.json)
     from . import records
     restored = records.restore(db)
