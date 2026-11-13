@@ -225,14 +225,14 @@ def update_station(sid: int, body: StationPatch, u: m.User = Depends(current_use
 # ---------- admin: photos and 360° panoramas ----------
 UPLOAD_ROOT = os.path.join("static", "uploads", "stations")
 MEDIA_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
-MEDIA_LIMIT_MB = {"photo": 15, "pano": 80, "tour": 600, "cad_doc": 40, "scheme": 40}
+MEDIA_LIMIT_MB = {"photo": 15, "pano": 80, "tour": 2048, "cad_doc": 40, "scheme": 40}
 DOC_KINDS = {"cad_doc", "scheme"}
 ZIP_TYPES = {"application/zip", "application/x-zip-compressed", "application/octet-stream", "multipart/x-zip"}
 # only static web assets are extracted from a tour archive; everything else is skipped
 TOUR_EXTS = {".html", ".htm", ".js", ".mjs", ".css", ".json", ".xml", ".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg", ".ico",
              ".mp3", ".ogg", ".wav", ".m4a", ".mp4", ".webm", ".woff", ".woff2", ".ttf", ".otf", ".txt"}
 TOUR_MAX_FILES = 30000
-TOUR_MAX_UNPACKED = 3 * 1024 ** 3
+TOUR_MAX_UNPACKED = 6 * 1024 ** 3
 
 
 def _extract_tour(zip_path: str, dest: str) -> str:

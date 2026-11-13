@@ -94,7 +94,7 @@ export default {
     addPhoto: "Rasm qo'shish", deletePhoto: "Bu rasm o'chirilsinmi?", addPano: "360° yuklash", deletePano: "Bu panorama o'chirilsinmi?",
     panoTitle: "Nomi (masalan, Perron)", uploaded: "Fayl yuklandi", badType: "JPG, PNG yoki WebP kerak",
     tooLarge: "Fayl {{mb}} MB dan katta", notEquirect: "360° panorama odatda 2:1 nisbatda bo'ladi. Tasvir buzilib ko'rinishi mumkin.",
-    panoHint: "2:1 panorama (JPG, PNG, WebP, 80 MB gacha) yoki Pano2VR / krpano turini yuklang: tur papkasini ZIP qiling (600 MB gacha).", prev: "Oldingi rasm", next: "Keyingi rasm",
+    panoHint: "2:1 panorama (JPG, PNG, WebP, 80 MB gacha) yoki Pano2VR / krpano turini yuklang: tur papkasini ZIP qiling (2 GB gacha).", prev: "Oldingi rasm", next: "Keyingi rasm",
   },
   map: {
     toolsShow: "Xarita asboblarini ko'rsatish", toolsHide: "Xarita asboblarini yig'ish", zoomIn: "Yaqinlashtirish", zoomOut: "Uzoqlashtirish", zoomLevel: "Xarita masshtabi", fitAll: "Butun tarmoqni ko'rsatish",

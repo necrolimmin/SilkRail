@@ -10,7 +10,7 @@ import { useAuth, isAdmin } from "../../store/auth";
 import { dateTime } from "../../utils";
 
 /* ---------- upload (admin only) ---------- */
-const LIMIT_MB = { photo: 15, pano: 80, tour: 600 };
+const LIMIT_MB = { photo: 15, pano: 80, tour: 2048 };
 const ACCEPT = { photo: "image/jpeg,image/png,image/webp", pano: "image/jpeg,image/png,image/webp", tour: ".zip,application/zip" };
 
 /** Button that uploads one image to /api/stations/{id}/media and hands the new media lists to onDone. */

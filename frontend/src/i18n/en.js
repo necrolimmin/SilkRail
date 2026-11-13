@@ -94,7 +94,7 @@ export default {
     addPhoto: "Add photo", deletePhoto: "Delete this photo?", addPano: "Upload 360°", deletePano: "Delete this panorama?",
     panoTitle: "Title (e.g. Platform)", uploaded: "File uploaded", badType: "Use JPG, PNG or WebP",
     tooLarge: "File is larger than {{mb}} MB", notEquirect: "A 360° panorama is usually 2:1. This image may look distorted.",
-    panoHint: "Upload a 2:1 panorama (JPG, PNG, WebP up to 80 MB) or a ready tour from Pano2VR / krpano: zip the tour folder (up to 600 MB).", prev: "Previous photo", next: "Next photo",
+    panoHint: "Upload a 2:1 panorama (JPG, PNG, WebP up to 80 MB) or a ready tour from Pano2VR / krpano: zip the tour folder (up to 2 GB).", prev: "Previous photo", next: "Next photo",
   },
   map: {
     toolsShow: "Show map tools", toolsHide: "Fold map tools", zoomIn: "Zoom in", zoomOut: "Zoom out", zoomLevel: "Map zoom level", fitAll: "Show the whole network",
