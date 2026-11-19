@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Hash, Globe, Train, Building2, Tags, MapPin, Network, Signpost, Boxes, BadgeCheck, Navigation, Compass, Receipt, Phone, Mail,
-  UserRound,
+  UserRound, Milestone,
 } from "lucide-react";
 import { PhotoHero, WeatherCard, StationEditButton } from "./StationMedia";
 import { NoData, useFetch } from "../../components/ui";
@@ -63,6 +63,8 @@ export function HomeTab({ st, onChange }) {
         <KV icon={Boxes} k={t("station.f.cargo")} v={yn(st.cargoOperations)} />
         <KV icon={BadgeCheck} k={t("station.f.operator")} v={yn(st.isOperator)} />
         <KV icon={Receipt} k={t("station.f.inn")} v={st.inn} />
+        {st.kmPost && <KV icon={Milestone} k={t("station.f.kmPost")}
+          v={`${st.kmPost.text} · PK${st.kmPost.pk} (${t(st.kmPost.source === "scheme" ? "station.f.kmScheme" : "station.f.kmComputed")})`} />}
         <KV icon={Compass} k={t("station.f.lat")} v={st.lat.toFixed(5)} />
         <KV icon={Compass} k={t("station.f.lng")} v={st.lng.toFixed(5)} />
       </div>

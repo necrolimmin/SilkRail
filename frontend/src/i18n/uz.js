@@ -99,6 +99,7 @@ export default {
   map: {
     toolsShow: "Xarita asboblarini ko'rsatish", toolsHide: "Xarita asboblarini yig'ish", zoomIn: "Yaqinlashtirish", zoomOut: "Uzoqlashtirish", zoomLevel: "Xarita masshtabi", fitAll: "Butun tarmoqni ko'rsatish",
     dockShow: "Panelni ko'rsatish", dockHide: "Panelni yashirish",
+    km: { delAnchorText: "Bu kilometrning qo'lda berilgan joyi olib tashlanadi. Atrofdagi kilometrlar usiz qayta hisoblanadi.", editor: "Kilometraj muharriri", editorHint: "Kilometr va piketlarni surish, qo'yish, o'chirish va tuzatishlarni bekor qilish.", tool: { move: "Surish", set: "Km qo'yish", delete: "O'chirish" }, hint: { move: "Belgini o'z joyiga suring. «+» va «−» tutqichlari keyingi va oldingi km ni chiqaradi.", set: "Yo'lga yoki belgiga bosing va bu yer nechanchi kilometr ekanini kiriting.", delete: "Belgini yoki butun uchastkani o'chirish uchun belgiga bosing." }, zoomIn: "Xaritani yaqinlashtiring: kilometrlar 12-masshtabdan, tutqichlar 13 dan, piketlar 15 dan ko'rinadi.", journal: "Tuzatishlar jurnali", journalEmpty: "Hozircha tuzatish yo'q.", j: { anchor: "joyi qo'lda berilgan", hidden: "foydalanuvchilardan yashirilgan", deleted: "o'chirilgan" }, show: "Xaritada ko'rsatish", undo: "Bu tuzatishni bekor qilish", undone: "Tuzatish bekor qilindi", resetAll: "Hammasini tiklash", resetAllConfirm: "Kilometrajdagi barcha qo'lda qilingan tuzatishlar bekor qilinsinmi?", setTitle: "Bu yer nechanchi kilometr?", setLabel: "Kilometr", setHint: "Masalan 3508, 3508+350 yoki 12 km PK7. Nuqta eng yaqin yo'lga bog'lanadi, atrofdagi kilometrlar qayta hisoblanadi.", setFormat: "Raqam tushunarsiz. Misollar: 3508, 3508+350, 12 km PK7.", setOk: "qo'yildi", setNeedSecond: "qo'yildi. Bu yo'lda hisob hali yo'q — unga ikkinchi kilometrni qo'ying.", renumber: "Raqamni o'zgartirish", delete: "O'chirish", delTitle: "Km ni o'chirish", delText: "Belgi piketlari bilan birga hamma uchun, administratorlar uchun ham o'chiriladi. Tuzatishlar jurnalidan qaytarish mumkin.", delPicketText: "Faqat shu piket o'chiriladi. Tuzatishlar jurnalidan qaytarish mumkin.", delTo: "Qaysi km gacha o'chirish", delToHint: "Bitta belgini o'chirish uchun shu raqamni qoldiring.", delOk: "O'chirilgan belgilar: {{n}}", delNothing: "Bu yo'lda bunday kilometrlar yo'q.", pullHint: "{{km}}-km ning haqiqiy joyiga torting", pullOk: "{{km}}-km qo'yildi, xaritadagi kilometr uzunligi {{m}} m. Oradagi piketlar joylashtirildi.", pullFar: "Belgini shu yo'lning o'ziga, undan 500 m dan yaqin joyga qo'ying.", pullSide: "{{km}}-km {{from}}-km ning boshqa tomonida va qo'shni stansiyadan narida bo'lmasligi kerak.", pullDistance: "Qo'shni kilometrlar orasi xaritada 500 m dan 3,5 km gacha bo'lishi kerak.", moveConfirm: "shu yerga ko'chirilsinmi?", moveText: "Atrofdagi kilometr va piketlar bu belgining yangi joyidan qayta hisoblanadi.", moveOk: "Ko'chirish", post: "Km", visible: "Foydalanuvchilarga ko'rsatish", visibleHint: "O'chirilgan belgini faqat administratorlar ko'radi (kulrang).", calcText: "Joyi MTU sxemasi bo'yicha hisoblangan. Belgi noto'g'ri joyda bo'lsa, uni xaritada haqiqiy joyiga suring — atrofdagi kilometrlar qayta hisoblanadi.", manualText: "Bu belgining joyi qo'lda belgilangan. Atrofdagi kilometrlar undan hisoblanadi.", reset: "Hisoblangan joyga qaytarish", resetConfirm: "Bu belgining qo'lda berilgan joyi olib tashlansinmi?" },
     edit: {
       panelHint: "Stansiyalar, belgilar va ularning joylashuvi", addStationHint: "Xaritani bosing — yo'lga biriktiriladi", addMarkerHint: "Istalgan nuqta, belgi va rangni tanlang",
       short: "Tahrir", groupMap: "Xaritadagidek", groupExtra: "Boshqalar", lat: "Kenglik", lng: "Uzunlik", coordsHint: "«41.3111, 69.2797» ko'rinishida birdaniga qo'yish mumkin. Belgini xaritada surish ham mumkin.",
@@ -106,7 +107,7 @@ export default {
       done: "Tayyor", addMarker: "Belgi qo'shish", markerAdded: "Belgi qo'shildi", customMarkers: "Mening belgilarim", moved: "yangi joylashuv saqlandi",
       saved: "O'zgarishlar saqlandi", deleted: "O'chirildi", title: "Tahrirlash", icon: "Belgi turi", color: "Rang", note: "Izoh",
       dragHint: "Obyektni ko'chirish uchun tahrirlash rejimida uni xaritada suring.",
-      deleteConfirm: "Ushbu belgi o'chirilsinmi?", deleteStation: "Stansiya barcha ma'lumotlari bilan o'chirilsinmi?",
+      deleteConfirm: "Ushbu belgi o'chirilsinmi?", deleteStation: "Stansiya barcha ma'lumotlari bilan o'chirilsinmi?", activeHint: "O'chirilgan stansiya administratorlarga kulrang ko'rinadi, boshqa foydalanuvchilarga ko'rinmaydi.",
       kinds: { station: "stansiya", company: "korxona", camera: "kamera", crossing: "kesishma", warning: "ogohlantirish", marker: "belgi" },
       markerKinds: { station: "Stansiya", hub: "Tugun stansiya", halt: "To'xtash punkti", yard: "Park / saralash", fuel: "Yoqilg'i korxonasi", company: "Korxona", depot: "Depo", other: "Boshqa obyekt", camera: "Kamera", crossingOk: "Qo'riqlanadigan kesishma", crossingNo: "Qo'riqlanmaydigan kesishma", warning: "Ogohlantirish", point: "Nuqta", flag: "Bayroq", building: "Bino", alert: "Diqqat", info: "Ma'lumot" },
     },
@@ -123,7 +124,7 @@ export default {
     assistantHello: "Salom! Men SilkRail yordamchisiman. Stansiyalar, kameralar yoki tarozilar haqida so'rang.",
     mtuStats: {
       show: "Statistikani ko'rsatish", totalStations: "Jami stansiyalar", active: "faol", corporations: "Korxonalar", railwayLength: "Temir yo'l uzunligi",
-      code: "MTU kodi", utilization: "Yuklanish darajasi", divide: "MTU bo'yicha ajratish", divideLines: "Temir yo'l chiziqlarini MTU ranglarida ko'rsatish",
+      code: "MTU kodi", utilization: "Yuklanish darajasi", divide: "MTU bo'yicha ajratish", divideLines: "Temir yo'l chiziqlarini MTU ranglarida ko'rsatish", legend: "MTU bo'yicha bo'linish", all: "Barcha MTU", border: "MTU chegarasi", st: "st.",
     },
     layer: {
       trains: ["Poezdlar onlayn", "Poezdlar harakatini real vaqtda kuzating."],
@@ -150,7 +151,7 @@ export default {
     f: {
       roadCode: "Yo'l kodi", networkMark: "Tarmoq belgisi", esr: "ESR kodi", country: "Mamlakat", road: "Yo'l", mtu: "MTU",
       stationClass: "Stansiya toifasi", stationRole: "Stansiya vazifasi", category: "Kategoriya", pointType: "Punkt turi",
-      transit: "Tranzit punkt", cargo: "Yuk ishlari", operator: "Faoliyat yurituvchi", inn: "STIR", lat: "Kenglik", lng: "Uzunlik",
+      transit: "Tranzit punkt", cargo: "Yuk ishlari", operator: "Faoliyat yurituvchi", inn: "STIR", kmPost: "Km va piket", kmScheme: "MTU sxemasi bo'yicha", kmComputed: "yo'l bo'yicha hisob", lat: "Kenglik", lng: "Uzunlik",
       fullName: "F.I.Sh.", phone: "Telefon", email: "Elektron pochta",
     },
     staff: {

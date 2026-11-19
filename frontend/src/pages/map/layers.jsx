@@ -104,8 +104,27 @@ export function markerIcon(kind, color) {
 export function trainIcon(num, heading) {
   return div(`<div class="rv-train">${svg(TrainFront, 12, "#fbbf24")}<span>${num}</span><b>${heading === "←" ? "◂" : "▸"}</b></div>`, [74, 22]);
 }
-export function kmIcon(km) {
-  return div(`<div class="rv-km">${km}</div>`, [36, 16]);
+/** name plate of an MTU on the map when the tracks are coloured by MTU; state: "" | "on" | "dim" */
+// Icons are cached by what they show: react-leaflet compares the icon by identity, and a new object on every render
+// would redraw every marker and break a drag that is in progress.
+const iconCache = new Map();
+const cached = (key, make) => {
+  if (!iconCache.has(key)) iconCache.set(key, make());
+  return iconCache.get(key);
+};
+export function mtuBadgeIcon(name, sub, color, state = "") {
+  return cached(`mb|${name}|${sub}|${color}|${state}`, () => L.divIcon({ className: "rv-ico", iconSize: [0, 0], html: `<div class="rv-mtu-badge ${state}" style="--c:${color}"><i></i><span><b>${name} MTU</b><em>${sub}</em></span></div>` }));
+}
+/** where the tracks pass from one MTU to another: a disc in the two colours */
+export function mtuJointIcon(a = "#94a3b8", b = "#94a3b8") {
+  return cached(`mj|${a}|${b}`, () => div(`<div class="rv-mtu-joint" style="--a:${a};--b:${b}"></div>`, [16, 16]));
+}
+/** "+" (next km) / "−" (previous km) handle beside a km post, for admins: drag it to the real place of that km post */
+export function kmHandleIcon(step) {
+  return cached(`kh|${step}`, () => div(`<div class="rv-kmh">${step > 0 ? "+" : "−"}</div>`, [14, 14], [7 - step * 27, 7]));
+}
+export function kmIcon(km, { off = false, manual = false } = {}) {
+  return cached(`km|${km}|${!!off}|${!!manual}`, () => div(`<div class="rv-km${off ? " off" : ""}${manual ? " manual" : ""}">${km}</div>`, [36, 16]));
 }
 
 /** Imperative marker-cluster layer: items = [{lat,lng,icon,type,onClick,tooltip,label,popup}]

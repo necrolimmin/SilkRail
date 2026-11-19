@@ -127,7 +127,8 @@ def run():
             station_class="Stansiya" if hub or (not halt and R.random() > .4) else ("Bekat" if halt else "Raz'ezd"),
             category=R.choice(["Oliy", "Birinchi"]) if hub else R.choice(["Ikkinchi", "Uchinchi", "To'rtinchi", "Beshinchi"]),
             cargo_operations=hub or (not halt and R.random() > .45), transit_point=hub and R.random() > .5,
-            is_operator=True, is_active=R.random() > .08, is_hub=hub, kind=ns["kind"],
+            # every station is on; the draw is kept so the demo data's random sequence stays the same
+            is_operator=True, is_active=R.random() >= 0, is_hub=hub, kind=ns["kind"],
             op_codes=["П", "Б"] if halt else sorted(R.sample(["1", "2", "3", "4", "5", "6", "8", "9", "10", "П", "Б", "О", "8н", "10н"], k=R.randint(1, 5))),
             inn=str(R.randint(200000000, 309999999)),
             leader_name=leader, leader_phone=phone(), leader_email=f"st{esr}@silkrail.uz",

@@ -8,6 +8,30 @@ DEMO_STREAMS = (
 )
 
 
+def reset_demo_inactive(conn) -> int:
+    """The seed used to switch ~8% of the stations off at random. Now a switched-off station disappears for users,
+    so once: every station on again, except those an admin switched off (stationInfo in data/map_edits.json)."""
+    import json
+    import os
+    if conn.execute(text("SELECT 1 FROM settings WHERE key = 'demo_inactive_reset'")).first():
+        return 0
+    off = set()
+    try:
+        with open(os.path.join(os.getenv("DATA_DIR", "data"), "map_edits.json"), encoding="utf-8") as f:
+            edits = json.load(f)
+        for k, v in edits.get("stationInfo", {}).items():
+            if v.get("is_active") is False:
+                off.add(v.get("esr_code") or k)
+    except (OSError, ValueError):
+        pass
+    rows = conn.execute(text("SELECT id, esr_code FROM stations WHERE NOT is_active")).all()
+    ids = [r[0] for r in rows if r[1] not in off]
+    for i in ids:
+        conn.execute(text("UPDATE stations SET is_active = :t WHERE id = :i"), {"t": True, "i": i})
+    conn.execute(text("INSERT INTO settings (key, value) VALUES ('demo_inactive_reset', CAST(:v AS JSON))"), {"v": "true"})
+    return len(ids)
+
+
 def remove_demo_cameras(conn) -> int:
     """Deletes the made-up cameras (real cameras come from Argus). Kept when SEED_DEMO_STAFF=1 asks for demo data."""
     import os

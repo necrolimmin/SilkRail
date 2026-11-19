@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from ..auth import ADMIN_ROLES, current_user, require_roles, user_pages
 from ..db import get_db
 from .. import models as m
+from .. import chainage, km_fixes
 
 
 
@@ -30,7 +31,10 @@ DATA_DIR = os.getenv("DATA_DIR", "data")
 @lru_cache
 def lines_geojson() -> dict:
     with open(os.path.join(DATA_DIR, "lines.geojson"), encoding="utf-8") as f:
-        return json.load(f)
+        g = json.load(f)
+    have = {f["properties"]["id"] for f in g["features"]}
+    g["features"] += [f for f in km_fixes.EXTRA_LINES if f["properties"]["id"] not in have]  # tracks OSM does not have
+    return g
 
 
 def _hav(a, b):
@@ -59,9 +63,15 @@ def mtus(db: Session = Depends(get_db)):
     return out
 
 
+def _admin(u) -> bool:
+    return u.role in ADMIN_ROLES
+
+
 @router.get("/stations")
-def stations(mtu: int | None = None, db: Session = Depends(get_db)):
+def stations(mtu: int | None = None, u: m.User = Depends(current_user), db: Session = Depends(get_db)):
     q = db.query(m.Station)
+    if not _admin(u):  # switched-off stations are seen (grey) by admins only
+        q = q.filter(m.Station.is_active)
     if mtu:
         q = q.filter(m.Station.mtu_id == mtu)
     return [{"id": s.id, "name": s.name, "code": s.esr_code, "lat": s.lat, "lng": s.lng, "mtuId": s.mtu_id,
@@ -79,10 +89,14 @@ def companies(kind: str | None = None, db: Session = Depends(get_db)):
 
 
 @router.get("/cameras")
-def cameras(db: Session = Depends(get_db)):
+def cameras(u: m.User = Depends(current_user), db: Session = Depends(get_db)):
     own = [{"id": c.id, "name": c.name, "lat": c.lat, "lng": c.lng, "online": c.online, "stationId": c.station_id,
             "streamUrl": c.stream_url} for c in db.query(m.Camera).all()]
-    return own + _argus_markers(db)
+    out = own + _argus_markers(db)
+    if not _admin(u):  # cameras of a station switched off are hidden with it
+        off = {sid for (sid,) in db.query(m.Station.id).filter(m.Station.is_active.is_(False)).all()}
+        out = [c for c in out if c["stationId"] not in off]
+    return out
 
 
 def _argus_markers(db: Session) -> list[dict]:
@@ -129,7 +143,13 @@ def lines_mtu_geojson() -> dict:
     if not os.path.exists(path):
         return lines_geojson()
     with open(path, encoding="utf-8") as f:
-        return json.load(f)
+        g = json.load(f)
+    have = {f["properties"]["id"]: f["properties"] for f in g["features"]}
+    for f in km_fixes.EXTRA_LINES:
+        like = have.get(km_fixes.EXTRA_LIKE.get(f["properties"]["id"]))
+        if f["properties"]["id"] not in have and like:
+            g["features"].append({**f, "properties": {**like, "id": f["properties"]["id"], "title": f["properties"]["title"]}})
+    return g
 
 
 @router.get("/lines")
@@ -140,8 +160,15 @@ def lines(divideByMtu: bool = False):
 @router.get("/line-list")
 def line_list(minKm: float = 15):
     """Lines long enough to be picked in the UI (e.g. for track works)."""
-    out = [{"id": f["properties"]["id"], "title": f["properties"]["title"], "lengthKm": f["properties"].get("lengthKm")}
-           for f in lines_geojson()["features"] if (f["properties"].get("lengthKm") or 999) >= minKm]
+    out = []
+    for f in lines_geojson()["features"]:
+        if (f["properties"].get("lengthKm") or 999) < minKm:
+            continue
+        item = {"id": f["properties"]["id"], "title": f["properties"]["title"], "lengthKm": f["properties"].get("lengthKm")}
+        rng = chainage.km_range(item["id"])  # lines tied to the MTU scheme count real km posts
+        if rng:
+            item.update(kmFrom=int(rng[0]), kmTo=int(rng[1]))
+        out.append(item)
     return sorted(out, key=lambda x: x["title"])
 
 
@@ -158,21 +185,29 @@ def _walk(coords, step_km):
 
 
 @router.get("/km-marks")
-def km_marks(line: str | None = None, pickets: bool = False, bbox: str | None = None):
-    """Kilometre marks (every 10 km overview, 1 km per line) or pickets (100 m). bbox=minLng,minLat,maxLng,maxLat"""
-    out = []
+def km_marks(line: str | None = None, pickets: bool = False, bbox: str | None = None, every: int | None = None,
+             u: m.User = Depends(current_user)):
+    """Kilometre marks (every 10 km overview, 1 km per line) or pickets (100 m). bbox=minLng,minLat,maxLng,maxLat
+    Lines tied to the MTU scheme (app.chainage) show real km posts; elsewhere the km is counted from the line's start,
+    except inside the scheme's area, where such made-up numbers would contradict the real ones."""
     bb = [float(x) for x in bbox.split(",")] if bbox else None
+    # every = km between the marks: the map asks for every 2nd km one zoom step out, so the labels do not pile up
+    step = 0.1 if pickets else every if every in (1, 2, 5, 10) else (1 if (line or bbox) else 10)
+    admin = _admin(u)
+    out = [k for k in chainage.marks(step, bb) if (not line or k["line"] == line) and (admin or not k["hidden"])]
     for f in lines_geojson()["features"]:
         lid = f["properties"]["id"]
         if line and lid != line:
             continue
         if not line and (f["properties"].get("lengthKm") or 999) < 5:
             continue
-        step = 0.1 if pickets else (1 if (line or bbox) else 10)
+        c = f["geometry"]["coordinates"]
+        if chainage.calibrated(lid) or chainage.in_area(*c[len(c) // 2]):
+            continue
         for lng, lat, km in _walk(f["geometry"]["coordinates"], step):
             if bb and not (bb[0] <= lng <= bb[2] and bb[1] <= lat <= bb[3]):
                 continue
-            out.append({"line": lid, "km": round(km, 1), "lat": lat, "lng": lng})
+            out.append({"line": lid, "km": round(km, 1), "label": f"{round(km, 1):g}" if not pickets else f"{km:.1f}", "lat": lat, "lng": lng})
             if len(out) > 6000:
                 break
     return out
@@ -208,9 +243,12 @@ def live_trains():
 
 
 @router.get("/search")
-def search(q: str, db: Session = Depends(get_db)):
+def search(q: str, u: m.User = Depends(current_user), db: Session = Depends(get_db)):
     like = f"%{q}%"
-    sts = db.query(m.Station).filter((m.Station.name.ilike(like)) | (m.Station.esr_code.ilike(like))).limit(10).all()
+    qs = db.query(m.Station).filter((m.Station.name.ilike(like)) | (m.Station.esr_code.ilike(like)))
+    if not _admin(u):
+        qs = qs.filter(m.Station.is_active)
+    sts = qs.limit(10).all()
     cs = db.query(m.Company).filter(m.Company.name.ilike(like)).limit(5).all()
     return [{"type": "station", "id": s.id, "name": s.name, "code": s.esr_code, "lat": s.lat, "lng": s.lng} for s in sts] + \
            [{"type": "company", "id": c.id, "name": c.name, "lat": c.lat, "lng": c.lng} for c in cs]
@@ -218,6 +256,118 @@ def search(q: str, db: Session = Depends(get_db)):
 
 # -------- track works --------
 REPAIR_TYPES = ["Kapital ta'mir", "O'rta ta'mir", "Joriy ta'mir", "Rels almashtirish", "Shpal almashtirish", "Ballast tozalash"]
+
+
+# -------- km posts / pickets corrected by admins (see app.chainage) --------
+class KmPostIn(BaseModel):
+    km: float
+    lat: float
+    lng: float
+    hidden: bool | None = None
+
+
+def _km_value(km: float) -> float:
+    if not 0 <= km <= 10000:
+        raise HTTPException(400, "km")
+    return round(km, 3)
+
+
+class KmSetIn(BaseModel):
+    text: str
+    lat: float
+    lng: float
+
+
+@router.post("/km-posts/set", dependencies=admin_only)
+def set_km_post(body: KmSetIn):
+    """This point of the track is km `text` ("3508", "3508+350", "12 km PK7")."""
+    km = chainage.parse_km(body.text)
+    if km is None:
+        raise HTTPException(400, "km")
+    r = chainage.set_anchor(_km_value(km), body.lat, body.lng)
+    if not r:
+        raise HTTPException(400, "too_far_from_track")
+    return {**r, "text": chainage.fmt(r["km"])["text"]}
+
+
+class KmDeleteIn(BaseModel):
+    line: str
+    km: float
+    kmTo: float | None = None
+    lat: float
+    lng: float
+
+
+@router.post("/km-posts/delete", dependencies=admin_only)
+def delete_km_posts(body: KmDeleteIn):
+    """Deletes a km post with its pickets, a stretch of them (kmTo), or one picket."""
+    n = chainage.delete_marks(body.line, _km_value(body.km), _km_value(body.km if body.kmTo is None else body.kmTo), body.lat, body.lng)
+    if not n:
+        raise HTTPException(400, "nothing")
+    return {"deleted": n}
+
+
+class KmRestoreIn(BaseModel):
+    g: int | None = None
+
+
+@router.post("/km-posts/restore", dependencies=admin_only)
+def restore_km_posts(body: KmRestoreIn):
+    return {"restored": chainage.restore_marks(body.g)}
+
+
+@router.get("/km-posts/edits", dependencies=admin_only)
+def km_edits():
+    """The journal of hand-made changes for the km editor."""
+    return chainage.journal()
+
+
+@router.post("/km-posts/reset-all", dependencies=admin_only)
+def reset_km_edits():
+    chainage.reset_edits()
+    return {"ok": True}
+
+
+@router.post("/km-posts", dependencies=admin_only)
+def move_km_post(body: KmPostIn):
+    """The km post / picket `km` really stands here (snapped to the nearest track)."""
+    r = chainage.set_anchor(_km_value(body.km), body.lat, body.lng)
+    if not r:
+        raise HTTPException(400, "too_far_from_track")
+    return r
+
+
+class KmPullIn(BaseModel):
+    km: float
+    lat: float
+    lng: float
+    toLat: float
+    toLng: float
+    step: int = 1
+
+
+@router.post("/km-posts/pull", dependencies=admin_only)
+def pull_km_post(body: KmPullIn):
+    """The next (step 1) or previous (step -1) km post pulled out of post `km` and dropped at its real place."""
+    km = _km_value(body.km)
+    if km != int(km) or body.step not in (1, -1) or km + body.step < 0:
+        raise HTTPException(400, "km")
+    r = chainage.pull(km, body.lat, body.lng, body.toLat, body.toLng, body.step)
+    if isinstance(r, str):
+        raise HTTPException(400, r)
+    return r
+
+
+@router.post("/km-posts/reset", dependencies=admin_only)
+def reset_km_post(body: KmPostIn):
+    """Back to the calculated place."""
+    return {"ok": chainage.remove_anchor(_km_value(body.km), body.lat, body.lng)}
+
+
+@router.put("/km-posts/visibility", dependencies=admin_only)
+def km_post_visibility(body: KmPostIn):
+    chainage.set_hidden(_km_value(body.km), body.lat, body.lng, bool(body.hidden))
+    return {"ok": True}
 
 
 @router.get("/repair-types")
@@ -241,7 +391,9 @@ def works(db: Session = Depends(get_db)):
     for w in db.query(m.TrackWork).order_by(m.TrackWork.created_at.desc()).all():
         geom = []
         f = feats.get(w.line)
-        if f:
+        if f:  # real km posts on lines tied to the scheme; works entered before that keep the old counting
+            geom = chainage.path(w.line, w.km_start + (w.picket_start - 1) / 10, w.km_end + w.picket_end / 10)
+        if f and len(geom) < 2:
             pts = [(lng, lat) for lng, lat, km in _walk(f["geometry"]["coordinates"], 1) if w.km_start <= km <= w.km_end]
             geom = [[p[1], p[0]] for p in pts]
         out.append({"id": w.id, "line": w.line, "kmStart": w.km_start, "kmEnd": w.km_end, "picketStart": w.picket_start,
@@ -407,6 +559,7 @@ class ObjectPatch(BaseModel):
     kind: str | None = None
     color: str | None = None
     note: str | None = None
+    active: bool | None = None  # stations: switched off = grey for admins, hidden from users
 
 
 @router.patch("/objects/{kind}/{oid}", dependencies=admin_only)
@@ -430,6 +583,8 @@ def patch_object(kind: str, oid: int, body: ObjectPatch, db: Session = Depends(g
         obj.lat, obj.lng = body.lat, body.lng
     if kind == "station" and body.esr is not None and body.esr.strip():
         obj.esr_code = body.esr.strip()[:16]
+    if kind == "station" and body.active is not None:
+        obj.is_active = body.active
     if kind == "marker":
         if body.kind in MARKER_KINDS:
             obj.kind = body.kind
@@ -443,6 +598,10 @@ def patch_object(kind: str, oid: int, body: ObjectPatch, db: Session = Depends(g
             # key = ESR code the station gets from the seed, even if the code was edited later
             key = next((k for k, v in e["stations"].items() if v.get("esr") == orig_esr), orig_esr)
             e["stations"][key] = {"name": obj.name, "esr": obj.esr_code, "lat": obj.lat, "lng": obj.lng}
+            if body.active is not None:  # same record as the station card's general info (station_routes.update_station)
+                info = e.setdefault("stationInfo", {})
+                ikey = next((k for k, v in info.items() if v.get("esr_code") == orig_esr), orig_esr)
+                info.setdefault(ikey, {}).update(is_active=obj.is_active, esr_code=obj.esr_code)
         _store_edits(upd)
     elif kind == "marker":
         _sync_markers(db)

@@ -1,15 +1,15 @@
 import { AutoComplete, Button, Form, InputNumber, Modal, Select, Slider, Switch, App, Progress, Popconfirm } from "antd";
 import { GeoJSON, MapContainer, Marker, Polyline, TileLayer, Tooltip, Popup, useMapEvents } from "react-leaflet";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Layers, SlidersHorizontal, Flag, Plus, Minus, Maximize, Crosshair, Search, TrainFront, Fuel, Route, MapPin, Landmark,
-  TriangleAlert, Zap, Cable, Ruler, Milestone, BarChart3, X, Pencil, MapPinPlus, Trash2, Move, ChevronUp, BookOpen,
+  TriangleAlert, Zap, Cable, Ruler, Milestone, BarChart3, X, Pencil, MapPinPlus, Trash2, Move, ChevronUp, BookOpen, Undo2,
 } from "lucide-react";
 import { get } from "../api";
 import api from "../api";
 import { store, dateTime } from "../utils";
-import { BASEMAPS, ICONS, ClusterLayer, MapRefBridge, trainIcon, kmIcon, markerIcon, markerDefaultColor, IconPreview, MARKER_GROUPS, MARKER_COLORS, LABELLED_KINDS, OBJ_COLORS } from "./map/layers";
+import { BASEMAPS, ICONS, ClusterLayer, MapRefBridge, trainIcon, kmIcon, kmHandleIcon, mtuBadgeIcon, mtuJointIcon, markerIcon, markerDefaultColor, IconPreview, MARKER_GROUPS, MARKER_COLORS, LABELLED_KINDS, OBJ_COLORS } from "./map/layers";
 import MapLegend from "./map/Legend";
 import uzb from "./map/uzb.json";
 import StationModal from "./station/StationModal";
@@ -35,6 +35,10 @@ const TOOLS = (t, { selectedMtu, showMtuStats, searchOpen }) => [
   { key: "zoomOut", Icon: Minus, label: t("map.zoomOut"), ring: 1, angle: 195 },
 ];
 
+// constant layer styles: a new object on every render would restyle the whole layer every time
+const ELECTRIC_STYLE = { color: "#f59e0b", weight: 7, opacity: 0.35 };
+const OPTIC_STYLE = { color: "#a855f7", weight: 2, dashArray: "2 6", opacity: 0.95 };
+
 function MapEvents({ onChange, onClick }) {
   const idle = useRef(null);
   // html.rv-moving pauses decorative animations and backdrop blur while the map is dragged or zoomed
@@ -51,7 +55,7 @@ function MapEvents({ onChange, onClick }) {
 
 export default function MapPage() {
   const { t } = useTranslation();
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const [map, setMap] = useState(null);
   const [view, setView] = useState({ zoom: 6, bbox: null });
   const [basemap, setBasemap] = useState(store.get("rv_basemap", "base"));
@@ -63,6 +67,7 @@ export default function MapPage() {
   const [mtuId, setMtuId] = useState();
   const [divide, setDivide] = useState(false);
   const [showMtuStats, setShowMtuStats] = useState(true);
+  const [hoverMtu, setHoverMtu] = useState(null); // MTU pointed at in the legend: the others fade on the map
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchOpts, setSearchOpts] = useState([]);
   const [searchText, setSearchText] = useState("");
@@ -76,6 +81,12 @@ export default function MapPage() {
   const [newSt, setNewSt] = useState(null); // {lat, lng, mode}
   const [editMode, setEditMode] = useState(false);
   const [editing, setEditing] = useState(null); // {kind, id, name, ...}
+  const [kmEdit, setKmEdit] = useState(null); // km post / picket opened in the edit mode
+  const [kmTick, setKmTick] = useState(0); // bumped after a km post was edited, to reload the marks
+  const [kmTool, setKmTool] = useState(null); // km editor: null (closed) | "move" | "set" | "delete"
+  const [kmJournal, setKmJournal] = useState([]); // everything changed by hand, to undo it
+  const [kmNew, setKmNew] = useState(null); // {lat, lng, text?}: the point that is being given its km
+  const [kmDel, setKmDel] = useState(null); // the mark that is being deleted
   const [showCustom, setShowCustom] = useState(store.get("rv_custom_markers", true));
   // sliding indicator under the open dock section (same idea as the header)
   const dockRef = useRef(null);
@@ -133,6 +144,85 @@ export default function MapPage() {
       setEditing(null);
     } catch { message.error(t("common.error")); }
   };
+  const kmText = (k) => `${Math.floor(k.km + 1e-6)}+${String(Math.round(((k.km + 1e-6) % 1) * 1000)).padStart(3, "0")}`;
+  const moveKm = async (k, ll, revert) => {
+    // a slip of the mouse must not re-count the km around: ask first
+    const sure = await new Promise((ok) => modal.confirm({
+      title: `${t("map.km.post")} ${kmText(k)}: ${t("map.km.moveConfirm")}`, content: t("map.km.moveText"),
+      okText: t("map.km.moveOk"), cancelText: t("common.cancel"), onOk: () => ok(true), onCancel: () => ok(false),
+    }));
+    if (!sure) { revert?.(); return; }
+    try {
+      await api.post("/api/map/km-posts", { km: k.km, lat: ll.lat, lng: ll.lng });
+      message.success(`${t("map.km.post")} ${kmText(k)}: ${t("map.edit.moved")}`);
+      setKmTick((x) => x + 1);
+    } catch (e) { revert?.(); message.error(e.response?.data?.detail === "too_far_from_track" ? t("map.tooFar") : t("common.error")); }
+  };
+  // the "+" / "−" handle of a km post: dragged away, it becomes the next / previous km post, dropped at its real place
+  const pullStart = (k, step, e) => {
+    const el = e.target.getElement()?.querySelector(".rv-kmh");
+    if (el) { el.textContent = k.km + step; el.classList.add("pull"); }
+  };
+  const pullEnd = async (k, step, e) => {
+    const mk = e.target, map = mk._map;
+    const el = mk.getElement()?.querySelector(".rv-kmh");
+    // the handle is drawn beside its point, so the drop place is where the handle is seen
+    const to = map.containerPointToLatLng(map.latLngToContainerPoint(mk.getLatLng()).add([step * 27, 0]));
+    try {
+      const { data: r } = await api.post("/api/map/km-posts/pull", { km: k.km, lat: k.lat, lng: k.lng, toLat: to.lat, toLng: to.lng, step });
+      message.success(t("map.km.pullOk", { km: r.km, m: Math.round(r.lengthKm * 1000) }));
+      setKmTick((x) => x + 1);
+    } catch (err) {
+      const d = err.response?.data?.detail;
+      message.error({ too_far_from_track: t("map.km.pullFar"), wrong_side: t("map.km.pullSide", { km: k.km + step, from: k.km }), bad_distance: t("map.km.pullDistance") }[d] || t("common.error"));
+    } finally {
+      mk.setLatLng([k.lat, k.lng]);
+      if (el) { el.textContent = step > 0 ? "+" : "−"; el.classList.remove("pull"); }
+    }
+  };
+  useEffect(() => {
+    if (kmTool) get("/api/map/km-posts/edits").then(setKmJournal).catch(() => setKmJournal([]));
+  }, [!!kmTool, kmTick]); // eslint-disable-line
+  const openKmEditor = () => { setKmTool("move"); setEditMode(true); setAddMode(null); setLayers((l) => ({ ...l, km: true })); setPanel(null); };
+  const kmDone = (text) => { message.success(text); setKmTick((x) => x + 1); };
+  const kmFail = (e) => message.error({ too_far_from_track: t("map.tooFar"), km: t("map.km.setFormat"), nothing: t("map.km.delNothing") }[e.response?.data?.detail] || t("common.error"));
+  const saveKmNew = async ({ text }) => {
+    try {
+      const { data: r } = await api.post("/api/map/km-posts/set", { text, lat: kmNew.lat, lng: kmNew.lng });
+      setKmNew(null);
+      kmDone(`${t("map.km.post")} ${r.text}: ${r.counted ? t("map.km.setOk") : t("map.km.setNeedSecond")}`);
+    } catch (e) { kmFail(e); }
+  };
+  const deleteKm = async ({ kmTo }) => {
+    if (kmDel.anchor) { // a point set by hand between the marks: deleting it = taking the hand-set km away
+      try { await api.post("/api/map/km-posts/reset", { km: kmDel.km, lat: kmDel.lat, lng: kmDel.lng }); setKmDel(null); kmDone(t("map.km.undone")); } catch (e) { kmFail(e); }
+      return;
+    }
+    try {
+      const { data: r } = await api.post("/api/map/km-posts/delete", { line: kmDel.line, km: kmDel.km, kmTo: kmTo ?? kmDel.km, lat: kmDel.lat, lng: kmDel.lng });
+      setKmDel(null);
+      kmDone(t("map.km.delOk", { n: r.deleted }));
+    } catch (e) { kmFail(e); }
+  };
+  const undoKm = async (j) => {
+    try {
+      if (j.type === "deleted") await api.post("/api/map/km-posts/restore", { g: j.g });
+      else if (j.type === "hidden") await api.put("/api/map/km-posts/visibility", { km: j.km, lat: j.lat, lng: j.lng, hidden: false });
+      else await api.post("/api/map/km-posts/reset", { km: j.km, lat: j.lat, lng: j.lng });
+      kmDone(t("map.km.undone"));
+    } catch (e) { kmFail(e); }
+  };
+  const resetKmAll = async () => {
+    try { await api.post("/api/map/km-posts/reset-all"); kmDone(t("map.km.undone")); } catch (e) { kmFail(e); }
+  };
+  const kmCall = async (path, body, method = "post") => {
+    try {
+      await api[method](`/api/map/km-posts${path}`, { km: kmEdit.km, lat: kmEdit.lat, lng: kmEdit.lng, ...body });
+      message.success(t("map.edit.saved"));
+      setKmEdit(null);
+      setKmTick((x) => x + 1);
+    } catch { message.error(t("common.error")); }
+  };
   const deleteEdited = async () => {
     try {
       await api.delete(`/api/map/objects/${editing.kind}/${editing.id}`);
@@ -154,7 +244,13 @@ export default function MapPage() {
       .then(([stations, companies, cameras, crossings, warnings, mtus, works, rt, ll, markers]) => { patch({ stations, companies, cameras, crossings, warnings, mtus, works, markers }); setRepairTypes(rt); setLineList(ll); })
       .catch(() => message.error(t("common.error")));
   }, []); // eslint-disable-line
-  useEffect(() => { get("/api/map/lines", { divideByMtu: divide }).then((lines) => patch({ lines })); }, [divide]);
+  useEffect(() => {
+    let stale = false; // a late answer for the previous mode must not replace the current lines
+    get("/api/map/lines", { divideByMtu: divide }).then((lines) => { if (!stale) patch({ lines, linesDivided: divide }); });
+    return () => { stale = true; };
+  }, [divide]);
+  // the km editor's tools belong to the edit mode: leaving it closes the editor
+  useEffect(() => { if (!editMode) setKmTool(null); }, [editMode]);
 
   // live trains
   useEffect(() => {
@@ -169,9 +265,13 @@ export default function MapPage() {
   const showKm = layers.km || kmCfg.all;
   useEffect(() => {
     if (!showKm || !view.bbox) { patch({ km: [] }); return; }
-    const params = view.zoom >= 15 && layers.pickets ? { pickets: true, bbox: view.bbox } : view.zoom >= 11 ? { bbox: view.bbox } : {};
-    get("/api/map/km-marks", params).then((km) => patch({ km }));
-  }, [showKm, layers.pickets, !!view.bbox, view.zoom >= 11 ? view.bbox : "overview"]); // eslint-disable-line
+    // pickets (100 m) from zoom 15, every km from 12, every 2nd km at 11 (a km is narrower than a label there), every 10 km below
+    const params = view.zoom >= 15 && layers.pickets ? { pickets: true, bbox: view.bbox }
+      : view.zoom >= 11 ? { bbox: view.bbox, every: view.zoom >= 12 ? 1 : 2 } : {};
+    let stale = false; // answers can arrive out of order while the map is being moved
+    get("/api/map/km-marks", params).then((km) => { if (!stale) patch({ km: km.map((k) => ({ ...k, pos: [k.lat, k.lng] })) }); });
+    return () => { stale = true; };
+  }, [showKm, layers.pickets, !!view.bbox, view.zoom >= 11 ? view.bbox : "overview", kmTick]); // eslint-disable-line
 
   const onView = useCallback((m) => {
     const b = m.getBounds();
@@ -186,7 +286,7 @@ export default function MapPage() {
     const items = [];
     const has = (k) => objects.includes("all") || objects.includes(k);
     if (has("stations")) data.stations.filter(inMtu).forEach((s) => items.push({
-      lat: s.lat, lng: s.lng, onClick: () => setStationId(s.id), edit: { kind: "station", id: s.id, name: s.name, esr: s.code },
+      lat: s.lat, lng: s.lng, onClick: () => setStationId(s.id), edit: { kind: "station", id: s.id, name: s.name, esr: s.code, active: s.isActive },
       type: s.isHub ? "hub" : !s.isActive ? "inactive" : s.kind === "halt" ? "halt" : s.kind === "yard" ? "yard" : "station",
       icon: s.isHub ? ICONS.hub : !s.isActive ? ICONS.stationOff : s.kind === "halt" ? ICONS.halt : s.kind === "yard" ? ICONS.yard : ICONS.station,
       label: esc(s.name), tooltip: `<b>${esc(s.name)}</b><br/>ESR ${esc(s.code)}`,
@@ -208,7 +308,7 @@ export default function MapPage() {
       edit: { kind: "marker", id: x.id, name: x.name, markerKind: x.kind, color: x.color, note: x.note },
     }));
     return items;
-  }, [data, objects, layers.markers, inMtu, mtuId, stationById, showCustom, t]);
+  }, [data.stations, data.companies, data.cameras, data.crossings, data.markers, objects, layers.markers, inMtu, mtuId, stationById, showCustom, t]); // eslint-disable-line
 
   const fuelItems = useMemo(() => (layers.fuel ? data.companies.filter((c) => c.kind === "fuel") : []), [layers.fuel, data.companies]);
   const selectedMtu = data.mtus.find((m) => m.id === mtuId);
@@ -220,10 +320,39 @@ export default function MapPage() {
     if (!id && map) map.flyToBounds(UZ_BOUNDS, { duration: 0.8 });
   };
 
-  const lineStyle = (f) => {
-    const p = f.properties;
-    return { color: divide && p.color ? p.color : basemap === "dark" || basemap === "satellite" ? "#5eead4" : "#0b3b4a", weight: 3.2, opacity: 0.9 };
-  };
+  // Division by MTU: every MTU's tracks get a soft glow of its colour (its territory), a contrast casing and the
+  // colour itself; the MTU chosen or pointed at in the legend stays bright, the others fade.
+  const darkMap = basemap === "dark" || basemap === "satellite";
+  const focusMtu = hoverMtu ?? mtuId ?? null;
+  const mtuStyles = useMemo(() => {
+    const col = (f) => f.properties.color || (darkMap ? "#5eead4" : "#0b3b4a");
+    const off = (f) => focusMtu != null && f.properties.mtuId !== focusMtu;
+    return {
+      glow: (f) => ({ color: col(f), weight: 18, opacity: off(f) ? 0 : focusMtu != null ? 0.26 : 0.17, lineCap: "round", lineJoin: "round" }),
+      casing: (f) => ({ color: darkMap ? "#0b1f33" : "#ffffff", weight: 6.5, opacity: off(f) ? 0.25 : 0.95, lineCap: "round", lineJoin: "round" }),
+      line: (f) => ({ color: col(f), weight: off(f) ? 2.4 : 3.6, opacity: off(f) ? 0.3 : 1, lineCap: "round", lineJoin: "round" }),
+    };
+  }, [darkMap, focusMtu]);
+  const mtuById = useMemo(() => Object.fromEntries(data.mtus.map((m) => [m.id, m])), [data.mtus]);
+  // points where the tracks pass from one MTU to another
+  const mtuJoints = useMemo(() => {
+    if (!divide || !data.lines) return [];
+    const ends = new Map();
+    data.lines.features.forEach((f) => {
+      const c = f.geometry.coordinates;
+      if (f.properties.mtuId == null) return;
+      [c[0], c[c.length - 1]].forEach((p) => {
+        const k = `${p[0].toFixed(2)},${p[1].toFixed(2)}`; // ~1 km: parallel tracks cross the border at one place
+        if (!ends.has(k)) ends.set(k, { lat: p[1], lng: p[0], ids: new Set() });
+        ends.get(k).ids.add(f.properties.mtuId);
+      });
+    });
+    return [...ends.values()].filter((e) => e.ids.size > 1).map((e) => ({ ...e, pos: [e.lat, e.lng], ids: [...e.ids].sort() }));
+  }, [divide, data.lines]);
+  const mtuPos = useMemo(() => Object.fromEntries(data.mtus.map((m) => [m.id, [m.lat, m.lng]])), [data.mtus]);
+  const mtuLines = divide && data.linesDivided ? data.lines : null; // the per-MTU set, once it has arrived
+  const borderStyle = useMemo(() => ({ color: darkMap ? "#5eead4" : "#0d9488", weight: 2, opacity: 0.9, fillColor: "#14b8a6", fillOpacity: 0.04, lineJoin: "round" }), [darkMap]);
+  const maxMtuLen = Math.max(1, ...data.mtus.map((m) => m.railwayLength || 0));
 
   const addWork = async (v) => {
     await api.post("/api/map/works", v);
@@ -239,20 +368,29 @@ export default function MapPage() {
     <div className={`rv-map ${view.zoom < 12 ? "zoom-lo" : ""} ${brightness !== 100 ? "dim" : ""}`} style={brightness !== 100 ? { "--map-b": brightness / 100 } : undefined}>
       <MapContainer bounds={UZ_BOUNDS} zoomControl={false} minZoom={5} maxZoom={18} preferCanvas>
         <MapRefBridge onReady={setMap} />
-        <MapEvents onChange={onView} onClick={(ll) => addMode && setNewSt({ lat: ll.lat, lng: ll.lng, mode: addMode })} />
+        <MapEvents onChange={onView} onClick={(ll) => (addMode ? setNewSt({ lat: ll.lat, lng: ll.lng, mode: addMode })
+          : canEdit && editMode && kmTool === "set" && setKmNew({ lat: ll.lat, lng: ll.lng }))} />
         <TileLayer key={basemap} url={bm.url} attribution={bm.attr} maxNativeZoom={bm.maxNative || 19} maxZoom={18} />
         {bm.labels && <TileLayer key={`${basemap}-labels`} url={bm.labels} maxNativeZoom={bm.maxNative || 19} maxZoom={18} />}
         {layers.borders && <GeoJSON key={`b-${basemap}`} data={uzb} interactive={false} smoothFactor={1.5}
-          style={{ color: basemap === "dark" || basemap === "satellite" ? "#5eead4" : "#0d9488", weight: 2, opacity: 0.9, fillColor: "#14b8a6", fillOpacity: 0.04, lineJoin: "round" }} />}
-        {layers.borders && divide && data.mtus.map((m) => (
-          <Polyline key={m.id} positions={[[m.bbox[0], m.bbox[1]], [m.bbox[0], m.bbox[3]], [m.bbox[2], m.bbox[3]], [m.bbox[2], m.bbox[1]], [m.bbox[0], m.bbox[1]]]}
-            pathOptions={{ color: m.color, weight: 1.5, dashArray: "4 6" }} />
-        ))}
+          style={borderStyle} />}
         {/* the basemap already draws the tracks; our own line overlay is shown only when colouring by MTU */}
-        {divide && data.lines && <GeoJSON key={`l-${divide}-${basemap}`} data={data.lines} style={lineStyle} attribution="Rail data © OpenStreetMap contributors"
-          onEachFeature={(f, l) => l.bindTooltip(f.properties.title, { sticky: true })} />}
-        {layers.electric && data.lines && <GeoJSON key={`e-${divide}`} data={{ ...data.lines, features: data.lines.features.filter((f) => f.properties.electrified) }} style={{ color: "#f59e0b", weight: 7, opacity: 0.35 }} />}
-        {layers.optic && data.lines && <GeoJSON key={`o-${divide}`} data={{ ...data.lines, features: data.lines.features.filter((f) => f.properties.optic) }} style={{ color: "#a855f7", weight: 2, dashArray: "2 6", opacity: 0.95 }} />}
+        {mtuLines && <GeoJSON key="lg" data={mtuLines} style={mtuStyles.glow} interactive={false} />}
+        {mtuLines && <GeoJSON key="lc" data={mtuLines} style={mtuStyles.casing} interactive={false} />}
+        {mtuLines && <GeoJSON key={`l-${data.mtus.length}`} data={mtuLines} style={mtuStyles.line} attribution="Rail data © OpenStreetMap contributors"
+          onEachFeature={(f, l) => l.bindTooltip(`${f.properties.title}${mtuById[f.properties.mtuId] ? ` · ${mtuById[f.properties.mtuId].short} MTU` : ""}`, { sticky: true })} />}
+        {mtuLines && mtuJoints.map((j) => (
+          <Marker key={`j${j.lat},${j.lng}`} position={j.pos} icon={mtuJointIcon(mtuById[j.ids[0]]?.color, mtuById[j.ids[1]]?.color)} zIndexOffset={300}>
+            <Tooltip direction="top" offset={[0, -8]}>{t("map.mtuStats.border")}: {j.ids.map((id) => mtuById[id]?.short).join(" | ")}</Tooltip>
+          </Marker>
+        ))}
+        {divide && view.zoom <= 9 && data.mtus.map((m) => (
+          <Marker key={`mb${m.id}`} position={mtuPos[m.id]} zIndexOffset={400}
+            icon={mtuBadgeIcon(m.short, `${m.totalStations} ${t("map.mtuStats.st")} · ${Math.round(m.railwayLength)} km`, m.color, focusMtu == null ? "" : focusMtu === m.id ? "on" : "dim")}
+            eventHandlers={{ click: () => selectMtu(mtuId === m.id ? undefined : m.id) }} />
+        ))}
+        {layers.electric && data.lines && <GeoJSON key={`e-${data.linesDivided}`} data={{ ...data.lines, features: data.lines.features.filter((f) => f.properties.electrified) }} style={ELECTRIC_STYLE} />}
+        {layers.optic && data.lines && <GeoJSON key={`o-${data.linesDivided}`} data={{ ...data.lines, features: data.lines.features.filter((f) => f.properties.optic) }} style={OPTIC_STYLE} />}
         {(kmCfg.selected || kmCfg.sections) && data.works.filter((w) => w.path.length > 1).map((w) => (
           <Polyline key={w.id} positions={w.path} pathOptions={{ color: "#ef4444", weight: kmCfg.selected ? 9 : 6, opacity: 0.75 }}>
             <Tooltip sticky>{w.repairType}: {w.kmStart}–{w.kmEnd} km</Tooltip>
@@ -272,8 +410,51 @@ export default function MapPage() {
             <Popup><b>{t("map.train")} №{tr.number}</b><br />{tr.line}<br />{t("map.speed")}: {tr.speed} km/h · {t("map.wagons")}: {tr.wagons}</Popup>
           </Marker>
         ))}
-        {showKm && view.zoom >= 8 && data.km.map((k, i) => <Marker key={`k${i}`} position={[k.lat, k.lng]} icon={kmIcon(k.km)} interactive={false} />)}
+        {showKm && view.zoom >= 8 && data.km.map((k, i) => {
+          const icon = kmIcon(k.label ?? k.km, { off: k.hidden, manual: k.manual });
+          // marks tied to the MTU scheme (they carry `hidden`) can be corrected by admins
+          if (!(canEdit && editMode && "hidden" in k)) return <Marker key={`k${i}`} position={k.pos} icon={icon} interactive={false} />;
+          const id = `k${i}-${k.km}-${k.lat}`;
+          // the km editor's tools: "set" gives the clicked place its km, "delete" removes the mark; otherwise marks are moved
+          const moving = kmTool !== "set" && kmTool !== "delete";
+          const handles = moving && view.zoom >= 13 && !k.hidden && Number.isInteger(k.km) && !String(k.label ?? "").startsWith("PK");
+          return (
+            <Fragment key={id}>
+              <Marker position={k.pos} icon={icon} draggable={moving}
+                eventHandlers={{
+                  click: () => (kmTool === "delete" ? setKmDel(k) : kmTool === "set" ? setKmNew({ lat: k.lat, lng: k.lng, text: kmText(k) }) : setKmEdit(k)),
+                  dragend: (e) => moveKm(k, e.target.getLatLng(), () => e.target.setLatLng([k.lat, k.lng])),
+                }} />
+              {handles && [1, -1].filter((step) => k.km + step >= 0).map((step) => (
+                <Marker key={step} position={k.pos} icon={kmHandleIcon(step)} draggable zIndexOffset={500}
+                  title={t("map.km.pullHint", { km: k.km + step })}
+                  eventHandlers={{ dragstart: (e) => pullStart(k, step, e), dragend: (e) => pullEnd(k, step, e) }} />
+              ))}
+            </Fragment>
+          );
+        })}
       </MapContainer>
+
+      {/* division by MTU: legend, also the way to pick an MTU */}
+      {divide && data.mtus.length > 0 && (
+        <div className="rv-mtu-legend rv-card">
+          <div className="hd">
+            <b>{t("map.mtuStats.legend")}</b>
+            {mtuId ? <a onClick={() => selectMtu(undefined)}>{t("map.mtuStats.all")}</a> : <X size={15} style={{ cursor: "pointer" }} onClick={() => setDivide(false)} />}
+          </div>
+          {data.mtus.map((m) => (
+            <button key={m.id} type="button" style={{ "--c": m.color }} aria-pressed={mtuId === m.id}
+              className={`${mtuId === m.id ? "on" : ""} ${focusMtu != null && focusMtu !== m.id ? "dim" : ""}`}
+              onMouseEnter={() => setHoverMtu(m.id)} onMouseLeave={() => setHoverMtu(null)}
+              onClick={() => selectMtu(mtuId === m.id ? undefined : m.id)}>
+              <i />
+              <span className="n">{m.short}</span>
+              <span className="v">{m.totalStations} {t("map.mtuStats.st")} · {Math.round(m.railwayLength)} km</span>
+              <span className="bar"><em style={{ width: `${Math.round(((m.railwayLength || 0) / maxMtuLen) * 100)}%` }} /></span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* MTU stats card */}
       {selectedMtu && showMtuStats && (
@@ -398,7 +579,7 @@ export default function MapPage() {
           <div style={{ borderTop: "1px solid var(--rv-border)", margin: "8px 0 12px" }} />
           <Form layout="vertical" size="middle" onFinish={addWork} initialValues={{ picketStart: 1, picketEnd: 10 }} requiredMark={false}>
             <Form.Item name="line" label={t("map.selectLine")} rules={[{ required: true }]}>
-              <Select showSearch optionFilterProp="label" options={lineList.map((l) => ({ value: l.id, label: `${l.title} · ${l.lengthKm} km` }))} />
+              <Select showSearch optionFilterProp="label" options={lineList.map((l) => ({ value: l.id, label: l.kmFrom != null ? `${l.title} · km ${l.kmFrom}–${l.kmTo}` : `${l.title} · ${l.lengthKm} km` }))} />
             </Form.Item>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               <Form.Item name="kmStart" label={t("map.kmStart")} rules={[{ required: true }]}><InputNumber min={0} style={{ width: "100%" }} /></Form.Item>
@@ -430,6 +611,9 @@ export default function MapPage() {
               </button>
             ))}
           </div>
+          <button type="button" className={`rv-edit-tile wide ${kmTool ? "on" : ""}`} onClick={() => (kmTool ? setKmTool(null) : openKmEditor())}>
+            <span className="ic"><Milestone size={20} /></span><b>{t("map.km.editor")}</b><span>{t("map.km.editorHint")}</span>
+          </button>
           <div className="rv-edit-foot">
             <span>{t("map.edit.customMarkers")}: <b>{data.markers.length}</b></span>
             <span>{t("map.stations")}: <b>{data.stations.length}</b></span>
@@ -484,12 +668,91 @@ export default function MapPage() {
           <Button type="primary" htmlType="submit" block>{t("common.save")}</Button>
         </Form>
       </Modal>
+      {canEdit && editMode && kmTool && (
+        <div className="rv-card rv-km-editor">
+          <div className="rv-edit-head">
+            <div><b>{t("map.km.editor")}</b><span>{t(`map.km.hint.${kmTool}`)}</span></div>
+            <X size={16} style={{ cursor: "pointer", flexShrink: 0 }} onClick={() => setKmTool(null)} />
+          </div>
+          <div className="rv-km-tools">
+            {[["move", Move], ["set", MapPinPlus], ["delete", Trash2]].map(([k, Icon]) => (
+              <button key={k} type="button" className={kmTool === k ? "on" : ""} onClick={() => setKmTool(k)} aria-pressed={kmTool === k}>
+                <Icon size={16} />{t(`map.km.tool.${k}`)}
+              </button>
+            ))}
+          </div>
+          {view.zoom < 12 && <p className="rv-km-note">{t("map.km.zoomIn")}</p>}
+          <div className="rv-km-jhead">
+            <b>{t("map.km.journal")} · {kmJournal.length}</b>
+            {kmJournal.length > 0 && (
+              <Popconfirm title={t("map.km.resetAllConfirm")} onConfirm={resetKmAll}><a>{t("map.km.resetAll")}</a></Popconfirm>
+            )}
+          </div>
+          <div className="rv-km-journal">
+            {kmJournal.length === 0 && <span className="rv-muted">{t("map.km.journalEmpty")}</span>}
+            {[...kmJournal].reverse().map((j, i) => (
+              <div key={i} className={`row ${j.type}`}>
+                <i />
+                <span className="txt"><b>{j.text}</b><span>{t(`map.km.j.${j.type}`)}{j.count > 1 ? ` · ${j.count}` : ""}</span></span>
+                <button type="button" title={t("map.km.show")} onClick={() => map?.flyTo([j.lat, j.lng], Math.max(map.getZoom(), 14), { duration: 0.8 })}><Crosshair size={14} /></button>
+                <button type="button" title={t("map.km.undo")} onClick={() => undoKm(j)}><Undo2 size={14} /></button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <Modal open={!!kmNew} width={400} footer={null} destroyOnHidden onCancel={() => setKmNew(null)} title={t("map.km.setTitle")}>
+        {kmNew && (
+          <Form layout="vertical" onFinish={saveKmNew} requiredMark={false} initialValues={{ text: kmNew.text }}>
+            <Form.Item name="text" label={t("map.km.setLabel")} extra={t("map.km.setHint")} rules={[{ required: true, whitespace: true }]}>
+              <Input autoFocus maxLength={20} placeholder="3508+350" />
+            </Form.Item>
+            <Button type="primary" htmlType="submit" block>{t("common.save")}</Button>
+          </Form>
+        )}
+      </Modal>
+      <Modal open={!!kmDel} width={400} footer={null} destroyOnHidden onCancel={() => setKmDel(null)}
+        title={kmDel && `${t("map.km.delTitle")} ${Number.isInteger(kmDel.km) ? kmDel.km : kmText(kmDel)}`}>
+        {kmDel && (
+          <Form layout="vertical" onFinish={deleteKm} requiredMark={false} initialValues={{ kmTo: kmDel.km }}>
+            <p className="rv-muted" style={{ marginTop: 0 }}>{kmDel.anchor ? t("map.km.delAnchorText") : Number.isInteger(kmDel.km) ? t("map.km.delText") : t("map.km.delPicketText")}</p>
+            {Number.isInteger(kmDel.km) && (
+              <Form.Item name="kmTo" label={t("map.km.delTo")} extra={t("map.km.delToHint")}><InputNumber min={0} precision={0} style={{ width: "100%" }} /></Form.Item>
+            )}
+            <Button danger type="primary" htmlType="submit" block>{t("map.km.delete")}</Button>
+          </Form>
+        )}
+      </Modal>
+      <Modal open={!!kmEdit} width={400} footer={null} destroyOnHidden onCancel={() => setKmEdit(null)}
+        title={kmEdit && `${t("map.km.post")} ${kmText(kmEdit)}${kmEdit.label?.startsWith("PK") ? ` · ${kmEdit.label}` : ""}`}>
+        {kmEdit && (
+          <div style={{ display: "grid", gap: 14 }}>
+            <p className="rv-muted" style={{ margin: 0 }}>{kmEdit.manual ? t("map.km.manualText") : t("map.km.calcText")}</p>
+            {!kmEdit.anchor && <div className="rv-layer-row" style={{ justifyContent: "space-between" }}>
+              <span><b style={{ fontSize: 13 }}>{t("map.km.visible")}</b><br /><span className="rv-muted" style={{ fontSize: 12 }}>{t("map.km.visibleHint")}</span></span>
+              <Switch checked={!kmEdit.hidden} onChange={(v) => kmCall("/visibility", { hidden: !v }, "put")} />
+            </div>}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <Button onClick={() => { setKmNew({ lat: kmEdit.lat, lng: kmEdit.lng, text: kmText(kmEdit) }); setKmEdit(null); }}>{t("map.km.renumber")}</Button>
+              <Button danger onClick={() => { setKmDel(kmEdit); setKmEdit(null); }}>{t("map.km.delete")}</Button>
+            </div>
+            {kmEdit.manual && (
+              <Popconfirm title={t("map.km.resetConfirm")} onConfirm={() => kmCall("/reset")}>
+                <Button block>{t("map.km.reset")}</Button>
+              </Popconfirm>
+            )}
+          </div>
+        )}
+      </Modal>
       <Modal open={!!editing} title={editing && `${t("map.edit.title")}: ${t(`map.edit.kinds.${editing.kind}`)}`} onCancel={() => setEditing(null)} footer={null} destroyOnHidden>
         {editing && (
           <Form layout="vertical" onFinish={saveEdit} requiredMark={false}
-            initialValues={{ name: editing.name, esr: editing.esr, kind: editing.markerKind, color: editing.color, note: editing.note, lat: editing.lat, lng: editing.lng }}>
+            initialValues={{ name: editing.name, esr: editing.esr, kind: editing.markerKind, color: editing.color, note: editing.note, lat: editing.lat, lng: editing.lng, active: editing.active }}>
             <Form.Item name="name" label={t("common.name")} rules={[{ required: true, whitespace: true }]}><Input autoFocus maxLength={160} /></Form.Item>
             {editing.kind === "station" && <Form.Item name="esr" label={t("station.f.esr")}><Input maxLength={16} /></Form.Item>}
+            {editing.kind === "station" && (
+              <Form.Item name="active" label={t("map.active")} valuePropName="checked" extra={t("map.edit.activeHint")}><Switch /></Form.Item>
+            )}
             {editing.kind === "marker" && <MarkerFields t={t} />}
             <CoordFields t={t} />
             <div style={{ display: "flex", gap: 8 }}>

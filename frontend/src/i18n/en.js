@@ -99,6 +99,7 @@ export default {
   map: {
     toolsShow: "Show map tools", toolsHide: "Fold map tools", zoomIn: "Zoom in", zoomOut: "Zoom out", zoomLevel: "Map zoom level", fitAll: "Show the whole network",
     dockShow: "Show panel", dockHide: "Hide panel",
+    km: { delAnchorText: "The hand-set place of this km is removed. The km around are recalculated without it.", editor: "Km editor", editorHint: "Move, place and delete km posts and pickets, undo the changes.", tool: { move: "Move", set: "Place km", delete: "Delete" }, hint: { move: "Drag a mark to its place. The “+” and “−” handles pull out the next and the previous km.", set: "Click the track or a mark and type which km is here.", delete: "Click a mark to delete it or a whole stretch." }, zoomIn: "Zoom in: single km show from zoom 12, handles from 13, pickets from 15.", journal: "Changes", journalEmpty: "No changes yet.", j: { anchor: "placed by hand", hidden: "hidden from users", deleted: "deleted" }, show: "Show on the map", undo: "Undo this change", undone: "Change undone", resetAll: "Reset all", resetAllConfirm: "Undo all hand-made km changes?", setTitle: "Which km is here?", setLabel: "Km", setHint: "E.g. 3508, 3508+350 or 12 km PK7. The point snaps to the nearest track and the km around are recalculated.", setFormat: "Could not read the number. Examples: 3508, 3508+350, 12 km PK7.", setOk: "placed", setNeedSecond: "placed. This line has no counting yet — place a second km on it.", renumber: "Change number", delete: "Delete", delTitle: "Delete km", delText: "The mark is deleted with its pickets for everyone, admins included. The changes list brings it back.", delPicketText: "Only this picket is deleted. The changes list brings it back.", delTo: "Delete up to km", delToHint: "Keep the same number to delete one mark.", delOk: "Marks deleted: {{n}}", delNothing: "This line has no such km.", pullHint: "Drag to the real place of km {{km}}", pullOk: "Km {{km}} placed, this kilometre is {{m}} m long on the map. The pickets between are set.", pullFar: "Drop the mark on the same track, within 500 m of it.", pullSide: "Km {{km}} must be on the other side of km {{from}} and not beyond the neighbouring station.", pullDistance: "Neighbouring km posts must be 500 m to 3.5 km apart on the map.", moveConfirm: "move it here?", moveText: "The km posts and pickets around it are re-counted from its new place.", moveOk: "Move", post: "Km", visible: "Show to users", visibleHint: "A mark switched off is seen by admins only (grey).", calcText: "Placed by the MTU scheme. If the mark is in the wrong place, drag it on the map to the right one — the km around it are recalculated.", manualText: "This mark was placed by hand. The km around it are counted from it.", reset: "Back to the calculated place", resetConfirm: "Remove the hand-set place of this mark?" },
     edit: {
       panelHint: "Stations, markers and their positions", addStationHint: "Click the map — snaps to the track", addMarkerHint: "Any point, pick icon and colour",
       short: "Edit", groupMap: "As on the map", groupExtra: "Other", lat: "Latitude", lng: "Longitude", coordsHint: "You can paste \"41.3111, 69.2797\" at once. The marker can also be dragged on the map.",
@@ -106,7 +107,7 @@ export default {
       done: "Done", addMarker: "Add marker", markerAdded: "Marker added", customMarkers: "My markers", moved: "new position saved",
       saved: "Changes saved", deleted: "Deleted", title: "Edit", icon: "Icon", color: "Colour", note: "Description",
       dragHint: "To move the object, drag it on the map while edit mode is on.",
-      deleteConfirm: "Delete this marker?", deleteStation: "Delete the station together with all its data?",
+      deleteConfirm: "Delete this marker?", deleteStation: "Delete the station together with all its data?", activeHint: "A station switched off is grey for admins and hidden from other users.",
       kinds: { station: "station", company: "enterprise", camera: "camera", crossing: "crossing", warning: "warning", marker: "marker" },
       markerKinds: { station: "Station", hub: "Junction station", halt: "Halt", yard: "Yard / sorting", fuel: "Fuel enterprise", company: "Enterprise", depot: "Depot", other: "Other object", camera: "Camera", crossingOk: "Guarded crossing", crossingNo: "Unguarded crossing", warning: "Warning", point: "Point", flag: "Flag", building: "Building", alert: "Alert", info: "Info" },
     },
@@ -123,7 +124,7 @@ export default {
     assistantHello: "Hi! I'm the SilkRail assistant. Ask me about stations, cameras or scales.",
     mtuStats: {
       show: "Show statistics", totalStations: "Total stations", active: "active", corporations: "Enterprises", railwayLength: "Track length",
-      code: "RRN code", utilization: "Utilization", divide: "Split by RRN", divideLines: "Colour lines by regional node",
+      code: "RRN code", utilization: "Utilization", divide: "Split by RRN", divideLines: "Colour lines by regional node", legend: "Division by MTU", all: "All MTU", border: "MTU border", st: "st.",
     },
     layer: {
       trains: ["Live trains", "Follow train movements in real time."],
@@ -150,7 +151,7 @@ export default {
     f: {
       roadCode: "Road code", networkMark: "Network mark", esr: "ESR code", country: "Country", road: "Railway", mtu: "Regional node",
       stationClass: "Station type", stationRole: "Purpose", category: "Category", pointType: "Point type",
-      transit: "Transit point", cargo: "Freight operations", operator: "Operating", inn: "TIN", lat: "Latitude", lng: "Longitude",
+      transit: "Transit point", cargo: "Freight operations", operator: "Operating", inn: "TIN", kmPost: "Km post and picket", kmScheme: "MTU scheme", kmComputed: "computed along the track", lat: "Latitude", lng: "Longitude",
       fullName: "Full name", phone: "Phone", email: "Email",
     },
     staff: {

@@ -10,7 +10,7 @@ import uuid
 import zipfile
 from datetime import date, datetime, timedelta
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -20,7 +20,17 @@ from ..db import get_db
 from .. import models as m
 from .common import bucket_expr, parse_range, page
 
-router = APIRouter(prefix="/api/stations", tags=["stations"], dependencies=[Depends(current_user)])
+def _visible_station(request: Request, u: m.User = Depends(current_user), db: Session = Depends(get_db)):
+    """A station switched off by an admin does not exist for the other users, whatever part of it is asked for."""
+    sid = request.path_params.get("sid")
+    if sid is None or u.role in ADMIN_ROLES or not str(sid).isdigit():
+        return
+    s = db.get(m.Station, int(sid))
+    if s is not None and not s.is_active:
+        raise HTTPException(404, "station")
+
+
+router = APIRouter(prefix="/api/stations", tags=["stations"], dependencies=[Depends(current_user), Depends(_visible_station)])
 
 CAT_NAMES = {1: "loadWagons", 2: "loadTons", 3: "unloadWagons", 4: "statWeight", 5: "unloadPerOp", 6: "workingPark", 7: "sentWagons"}
 
@@ -124,6 +134,8 @@ def weather(sid: int, db: Session = Depends(get_db)):
 @router.get("/{sid}")
 def detail(sid: int, u: m.User = Depends(current_user), db: Session = Depends(get_db)):
     s = _st(db, sid)
+    if not s.is_active and u.role not in ADMIN_ROLES:
+        raise HTTPException(404, "station")
     tabs = user_station_tabs(u)
     media = _media(db, s)
     if "home" not in tabs:
@@ -141,7 +153,18 @@ def detail(sid: int, u: m.User = Depends(current_user), db: Session = Depends(ge
         "leader": {"fullName": s.leader_name, "phone": s.leader_phone, "email": s.leader_email},
         "corpLeader": s.corp_leader_name, "imageUrl": s.image_url, "panoramaUrl": s.panorama_url,
         "country": s.country or "O'zbekiston", "road": s.road_name or "O'zbekiston Temir Yo'llari (O'TY)",
+        "kmPost": _km_post(s),
     }
+
+
+def _km_post(s: m.Station):
+    """Km post and picket from the MTU scheme, or computed along the track (app.chainage)."""
+    try:
+        from .. import chainage
+        return chainage.station_km(s)
+    except Exception:  # never let a geometry problem break the station card
+        log.exception("km post of station %s", s.id)
+        return None
 
 
 # ---------- admin: edit general info ----------

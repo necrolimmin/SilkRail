@@ -23,8 +23,9 @@ with engine.begin() as conn:
     for table, col, ddl in _NEW_COLUMNS:
         if col not in {c["name"] for c in inspect(conn).get_columns(table)}:
             conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}"))
-    from .main_cleanup import remove_demo_cameras
+    from .main_cleanup import remove_demo_cameras, reset_demo_inactive
     remove_demo_cameras(conn)
+    reset_demo_inactive(conn)
     # project was renamed RailVision -> SilkRail
     conn.execute(text("UPDATE stations SET leader_email = REPLACE(leader_email, '@railvision.uz', '@silkrail.uz') "
                       "WHERE leader_email LIKE '%@railvision.uz'"))
